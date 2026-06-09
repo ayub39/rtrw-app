@@ -153,3 +153,10 @@ button.stat{border:none;text-align:left;cursor:pointer;font-family:inherit}
 .poll-bar{position:absolute;inset:0;width:var(--pct,0);background:var(--green-l);transition:width .4s ease;z-index:0}
 .poll-txt{position:relative;z-index:1;font-weight:600;color:var(--ink)}
 .poll-pct{position:relative;z-index:1;font-weight:700;color:var(--green-d);font-size:13px}
+
+/* ---------- DASHBOARD GREETING ---------- */
+.hero-greet{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.hero-hi{font-size:13px;opacity:.9;display:block}
+.hero-name{font-size:22px;font-weight:800;display:block;margin:2px 0;line-height:1.15}
+.hero-loc{font-size:12px;opacity:.92;margin-top:4px}
+.hero-role{background:rgba(255,255,255,.22);padding:5px 11px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;flex:0 0 auto}

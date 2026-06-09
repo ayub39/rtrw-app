@@ -46,7 +46,6 @@ const VIEWS = {
   bantuan: { label: 'Minta Bantuan', icon: '🆘' },
   pengumuman: { label: 'Pengumuman', icon: '📢' },
   warga: { label: 'Data Warga', icon: '👥' },
-  iuran: { label: 'Iuran & Kas', icon: '💰' },
   surat: { label: 'Layanan Surat', icon: '✉️' },
   jadwal: { label: 'Jadwal & Ronda', icon: '📅' },
   kontak: { label: 'Kontak Penting', icon: '📇' },
@@ -54,8 +53,8 @@ const VIEWS = {
   notifikasi: { label: 'Notifikasi', icon: '🔔' },
   menu: { label: 'Menu', icon: '☰' }
 };
-const TABS = ['beranda', 'lapor', 'pengumuman', 'iuran', 'menu'];
-const MENU_ITEMS = ['lapor', 'bantuan', 'surat', 'jadwal', 'pengumuman', 'warga', 'iuran', 'kontak', 'polling', 'notifikasi'];
+const TABS = ['beranda', 'lapor', 'surat', 'pengumuman', 'menu'];
+const MENU_ITEMS = ['lapor', 'bantuan', 'surat', 'jadwal', 'pengumuman', 'warga', 'kontak', 'polling', 'notifikasi'];
 
 // ============================================================
 //  VIEWS
@@ -63,17 +62,23 @@ const MENU_ITEMS = ['lapor', 'bantuan', 'surat', 'jadwal', 'pengumuman', 'warga'
 const Views = {
   // ---------- DASHBOARD ----------
   async beranda(user) {
-    const [lap, ban, sur, iur, kas, peng] = await Promise.all([
-      DB.list('laporan'), DB.list('bantuan'), DB.list('surat'), DB.list('iuran'), DB.list('kas'), DB.list('pengumuman')
+    const [lap, ban, sur, peng] = await Promise.all([
+      DB.list('laporan'), DB.list('bantuan'), DB.list('surat'), DB.list('pengumuman')
     ]);
-    const saldo = kas.reduce((s, k) => s + (k.tipe === 'masuk' ? k.jumlah : -k.jumlah), 0);
+    const jam = new Date().getHours();
+    const sapa = jam < 11 ? 'Selamat pagi' : jam < 15 ? 'Selamat siang' : jam < 18 ? 'Selamat sore' : 'Selamat malam';
     const stat = (label, val, icon, tone, nav) => `
       <button class="stat" data-tone="${tone}" data-nav="${nav}"><div class="stat-ic">${icon}</div>
       <div><div class="stat-val">${val}</div><div class="stat-lbl">${label}</div></div></button>`;
     const pinned = peng.filter((p) => p.pinned)[0] || peng[0];
     const myCount = await countMine(user.nama);
     return `
-      <div class="hero-card"><div class="hero-saldo"><span>Saldo Kas • ${esc(CFG.WILAYAH.nama)}</span><strong>${rupiah(saldo)}</strong></div></div>
+      <div class="hero-card"><div class="hero-greet">
+        <div><span class="hero-hi">${sapa},</span><strong class="hero-name">${esc(user.nama)} 👋</strong>
+        <div class="hero-loc">📍 ${esc(CFG.WILAYAH.nama)}</div></div>
+        <span class="hero-role">${user.role === 'pengurus' ? '🛡️ Pengurus' : '👤 Warga'}</span>
+      </div></div>
+      <div class="section-title">Ringkasan</div>
       <div class="stat-grid">
         ${stat('Laporan aktif', lap.filter((x) => x.status !== 'Selesai').length, '📋', 'orange', 'lapor')}
         ${stat('Minta bantuan', ban.filter((x) => x.status !== 'Selesai').length, '🆘', 'red', 'bantuan')}
@@ -101,7 +106,7 @@ const Views = {
     return `<div class="section-title">Semua Layanan</div><div class="quick-grid">${items}</div>
       <div class="card"><div class="card-body profile-row">
         <div class="avatar big">${esc((user.nama || 'U')[0].toUpperCase())}</div>
-        <div><strong>${esc(user.nama)}</strong><div class="muted">${user.role === 'pengurus' ? 'Pengurus RT/RW' : 'Warga'}</div></div>
+        <div><strong>${esc(user.nama)}</strong><div class="muted">${user.role === 'pengurus' ? 'Pengurus RT/RW' : 'Warga'}${user.email ? ' • ' + esc(user.email) : ''}</div></div>
         <button class="btn ghost danger" id="btn-logout">Keluar</button>
       </div></div>`;
   },
@@ -205,41 +210,6 @@ const Views = {
         ${role === 'pengurus' ? delBtn('warga', r.id) : ''}
       </div></div>`).join('') || emptyState('Belum ada data warga.');
     return head + form + `<div class="section-title">Daftar Warga</div>` + list;
-  },
-
-  // ---------- IURAN & KAS ----------
-  async iuran(user) {
-    const role = user.role; const [iur, kas] = await Promise.all([DB.list('iuran'), DB.list('kas')]);
-    const masuk = kas.filter((k) => k.tipe === 'masuk').reduce((s, k) => s + k.jumlah, 0);
-    const keluar = kas.filter((k) => k.tipe === 'keluar').reduce((s, k) => s + k.jumlah, 0);
-    const head = `
-      <div class="hero-card"><div class="hero-saldo"><span>Saldo Kas</span><strong>${rupiah(masuk - keluar)}</strong></div>
-      <div class="hero-sub"><span>↗ Masuk ${rupiah(masuk)}</span><span>↘ Keluar ${rupiah(keluar)}</span></div></div>`;
-    const forms = role === 'pengurus' ? `
-      <form id="f-iuran" class="form card"><div class="card-body">
-        <h3>Catat Iuran Warga</h3>
-        <label>Nama warga<input name="wargaNama" required></label>
-        <div class="grid-2"><label>Bulan<input name="bulan" type="month" required></label><label>Jumlah<input name="jumlah" type="number" value="${CFG.WILAYAH.iuranBulanan}"></label></div>
-        <label>Status<select name="status"><option>Lunas</option><option>Belum</option></select></label>
-        <button class="btn primary" type="submit">Simpan Iuran</button>
-      </div></form>
-      <form id="f-kas" class="form card"><div class="card-body">
-        <h3>Catat Kas Masuk/Keluar</h3>
-        <label>Tipe<select name="tipe"><option value="masuk">Masuk</option><option value="keluar">Keluar</option></select></label>
-        <label>Keterangan<input name="keterangan" required></label>
-        <label>Jumlah<input name="jumlah" type="number" required></label>
-        <button class="btn primary" type="submit">Simpan Transaksi</button>
-      </div></form>` : `<div class="callout blue"><div>💰</div><div>Iuran bulanan: <strong>${rupiah(CFG.WILAYAH.iuranBulanan)}</strong>. Hubungi pengurus untuk pembayaran.</div></div>`;
-    const iuranList = iur.map((r) => `
-      <div class="card"><div class="card-body"><div class="row-between"><strong>${esc(r.wargaNama)}</strong>${badge(r.status)}</div>
-      <div class="kv"><span>Bulan</span><b>${esc(r.bulan)}</b></div><div class="kv"><span>Jumlah</span><b>${rupiah(r.jumlah)}</b></div>
-      ${role === 'pengurus' && r.status === 'Belum' ? `<div class="actions"><button class="btn ghost" data-pay="${r.id}">Tandai Lunas</button></div>` : ''}
-      </div></div>`).join('') || emptyState('Belum ada data iuran.');
-    const kasList = kas.map((k) => `
-      <div class="tx ${k.tipe}"><div><strong>${esc(k.keterangan)}</strong><small class="muted"> ${tgl(k.createdAt)}</small></div>
-      <span class="tx-amt">${k.tipe === 'masuk' ? '+' : '−'} ${rupiah(k.jumlah)}</span></div>`).join('') || emptyState('Belum ada transaksi.');
-    return head + forms + `<div class="section-title">Status Iuran</div>` + iuranList +
-      `<div class="section-title">Buku Kas</div><div class="card"><div class="card-body tx-list">${kasList}</div></div>`;
   },
 
   // ---------- LAYANAN SURAT ----------
@@ -399,19 +369,24 @@ function renderLogin() {
       <div class="brand"><div class="logo">🏘️</div><h1>SiWarga</h1><p>Layanan digital RT/RW</p></div>
       <form id="f-login">
         <label>Nama Anda<input name="nama" required placeholder="Nama lengkap"></label>
+        <label>NIK<input name="nik" required inputmode="numeric" maxlength="16" placeholder="16 digit NIK (sesuai KTP)"></label>
+        <label>Email<input name="email" type="email" required placeholder="email@contoh.com"></label>
         <label>Masuk sebagai</label>
         <div class="role-pick">
           <label class="role-opt"><input type="radio" name="role" value="warga" checked><span>👤 Warga</span></label>
           <label class="role-opt"><input type="radio" name="role" value="pengurus"><span>🛡️ Pengurus</span></label>
         </div>
-        <button class="btn primary block" type="submit">Masuk</button>
+        <button class="btn primary block" type="submit">Daftar / Masuk</button>
       </form>
       <p class="login-note">Mode demo — data tersimpan di perangkat Anda.${DB.backend === 'supabase' ? ' Terhubung Supabase.' : ''}</p>
     </div></div>`;
   $('#f-login').addEventListener('submit', (e) => {
     e.preventDefault();
     const fd = new FormData(e.target);
-    Session.set({ nama: fd.get('nama').trim(), role: fd.get('role') });
+    const nik = (fd.get('nik') || '').trim();
+    const email = (fd.get('email') || '').trim();
+    if (!/^\d{16}$/.test(nik)) { toast('NIK harus 16 digit angka'); return; }
+    Session.set({ nama: fd.get('nama').trim(), nik, email, role: fd.get('role') });
     toast('Selamat datang, ' + fd.get('nama'));
     render('beranda');
   });
@@ -436,8 +411,6 @@ function bindForms(view) {
   onSubmit('#f-surat', 'surat', (d) => ({ ...d, status: 'Menunggu', pemohon: user.nama }), 'Pengajuan terkirim ✅');
   onSubmit('#f-peng', 'pengumuman', (d) => ({ ...d, pinned: !!d.pinned, author: user.nama }), 'Pengumuman terbit ✅');
   onSubmit('#f-warga', 'warga', (d) => ({ ...d, jmlAnggota: Number(d.jmlAnggota) || 1 }), 'Data warga tersimpan ✅');
-  onSubmit('#f-iuran', 'iuran', (d) => ({ ...d, jumlah: Number(d.jumlah) || 0 }), 'Iuran tercatat ✅');
-  onSubmit('#f-kas', 'kas', (d) => ({ ...d, jumlah: Number(d.jumlah) || 0 }), 'Transaksi tercatat ✅');
   onSubmit('#f-jadwal', 'jadwal', (d) => ({ ...d }), 'Jadwal tersimpan ✅');
   onSubmit('#f-kontak', 'kontak', (d) => ({ ...d }), 'Kontak tersimpan ✅');
   onSubmit('#f-polling', 'polling', (d) => ({
@@ -470,13 +443,6 @@ document.addEventListener('click', async (e) => {
     const [coll, id, status] = set.dataset.set.split(':');
     await DB.update(coll, id, { status }); toast('Status: ' + status);
     render(localStorage.getItem('siwarga:lastView')); return;
-  }
-  const pay = e.target.closest('[data-pay]');
-  if (pay) {
-    const r = (await DB.list('iuran')).find((x) => x.id === pay.dataset.pay);
-    await DB.update('iuran', pay.dataset.pay, { status: 'Lunas', metode: 'Tunai' });
-    await DB.add('kas', { tipe: 'masuk', keterangan: 'Iuran ' + (r ? r.wargaNama : ''), jumlah: r ? r.jumlah : 0 });
-    toast('Iuran ditandai lunas ✅'); render('iuran'); return;
   }
   const del = e.target.closest('[data-del]');
   if (del) {

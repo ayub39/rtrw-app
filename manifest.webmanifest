@@ -1,0 +1,17 @@
+{
+  "name": "SiWarga - Layanan RT/RW",
+  "short_name": "SiWarga",
+  "description": "Aplikasi layanan warga RT/RW: lapor masalah, minta bantuan, pengumuman, data warga, iuran kas, dan pengajuan surat.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0e7c5a",
+  "theme_color": "#0e7c5a",
+  "lang": "id",
+  "categories": ["government", "productivity", "social"],
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

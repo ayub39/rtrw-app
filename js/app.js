@@ -273,18 +273,7 @@ const Views = {
       </div>
       <div class="section-title">📥 Kotak Masuk Pengajuan ${totalMasuk ? `<span class="chip">${totalMasuk}</span>` : ''}</div>
       <p class="muted" style="margin:-4px 0 10px">Pengajuan dari warga masuk ke sini. Setujui, proses, atau selesaikan langsung di bawah.</p>
-      ${inboxCards}
-      <div class="section-title">Kelola Layanan</div>
-      <div class="quick-grid">
-        <button class="quick" data-nav="surat"><span class="q-ic">${ic('mail')}</span><span>Layanan Surat</span></button>
-        <button class="quick" data-nav="lapor"><span class="q-ic">${ic('clipboard')}</span><span>Laporan</span></button>
-        <button class="quick" data-nav="bantuan"><span class="q-ic">${ic('lifebuoy')}</span><span>Bantuan</span></button>
-        <button class="quick" data-nav="pengumuman"><span class="q-ic">${ic('megaphone')}</span><span>Pengumuman</span></button>
-        <button class="quick" data-nav="warga"><span class="q-ic">${ic('users')}</span><span>Data Warga</span></button>
-        <button class="quick" data-nav="cariwarga"><span class="q-ic">${ic('search')}</span><span>Cari Warga</span></button>
-        <button class="quick" data-nav="statistik"><span class="q-ic">${ic('pie')}</span><span>Statistik</span></button>
-        <button class="quick" data-nav="jadwal"><span class="q-ic">${ic('calendar')}</span><span>Jadwal & Ronda</span></button>
-      </div>`;
+      ${inboxCards}`;
   },
 
   // ---------- MENU (semua modul) ----------

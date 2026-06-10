@@ -1,5 +1,5 @@
 // Service Worker - SiWarga PWA
-const CACHE = 'siwarga-v8';
+const CACHE = 'siwarga-v9';
 const ASSETS = [
   './',
   './index.html',
@@ -28,10 +28,12 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
+  // Network-first for Supabase / API calls
   if (url.origin !== self.location.origin) {
     e.respondWith(fetch(req).catch(() => caches.match(req)));
     return;
   }
+  // Network-first for app shell (HTML/CSS/JS) supaya update cepat keambil
   if (req.destination === 'document' || req.destination === 'script' || req.destination === 'style' || url.pathname.endsWith('.js') || url.pathname.endsWith('.css') || url.pathname.endsWith('.html') || url.pathname.endsWith('/')) {
     e.respondWith(
       fetch(req).then((res) => {
@@ -42,6 +44,7 @@ self.addEventListener('fetch', (e) => {
     );
     return;
   }
+  // Cache-first untuk aset lain (icon, dll)
   e.respondWith(
     caches.match(req).then((cached) => {
       if (cached) return cached;

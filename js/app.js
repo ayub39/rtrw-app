@@ -551,6 +551,12 @@ async function countMine(nama) {
   const [lap, ban, sur] = await Promise.all([DB.list('laporan'), DB.list('bantuan'), DB.list('surat')]);
   return lap.filter((x) => x.pelapor === nama).length + ban.filter((x) => x.pemohon === nama).length + sur.filter((x) => x.pemohon === nama).length;
 }
+async function getPengurusList() {
+  let list = [];
+  try { list = await DB.list('pengurus'); } catch (e) { list = []; }
+  if (!list || !list.length) list = (CFG.PENGURUS || []);
+  return list;
+}
 function formData(form) {
   const fd = new FormData(form); const o = {};
   fd.forEach((v, k) => { o[k] = typeof v === 'string' ? v.trim() : v; });
@@ -586,40 +592,55 @@ async function render(view) {
   }
 }
 
-function renderLogin() {
+function renderLogin(mode) {
+  mode = mode || 'warga';
+  const isPeng = mode === 'pengurus';
   $('#app').innerHTML = `
     <div class="login">
       <div class="login-card">
         <div class="login-logo">🏘️</div>
         <h1>SiWarga</h1>
         <p class="muted">Layanan digital RT/RW — ${esc(CFG.WILAYAH.nama)}</p>
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <button type="button" class="btn ${isPeng ? 'ghost' : 'primary'} block" data-mode="warga">👤 Warga</button>
+          <button type="button" class="btn ${isPeng ? 'primary' : 'ghost'} block" data-mode="pengurus">🛡️ Pengurus</button>
+        </div>
+        ${isPeng ? `
+        <form id="f-login" class="form">
+          <div class="callout blue"><div>🛡️</div><div>Akun pengurus harus sudah didaftarkan admin di database. Masuk dengan NIK & email yang terdaftar.</div></div>
+          <label>NIK terdaftar<input name="nik" inputmode="numeric" maxlength="16" required placeholder="16 digit NIK"></label>
+          <label>Email terdaftar<input name="email" type="email" required placeholder="email@contoh.com"></label>
+          <button class="btn primary block" type="submit">Masuk sebagai Pengurus</button>
+        </form>
+        <small class="muted">Belum terdaftar? Hubungi admin RW/RT agar dimasukkan ke database.</small>
+        ` : `
         <form id="f-login" class="form">
           <label>Nama lengkap<input name="nama" required placeholder="Nama sesuai KTP"></label>
           <label>NIK (16 digit)<input name="nik" inputmode="numeric" maxlength="16" required placeholder="contoh: 3201xxxxxxxxxxxx"></label>
           <label>Email<input name="email" type="email" required placeholder="email@contoh.com"></label>
-          <div class="role-pick">
-            <label class="role-opt"><input type="radio" name="role" value="warga" checked><span>👤 Warga</span></label>
-            <label class="role-opt"><input type="radio" name="role" value="pengurus"><span>🛡️ Pengurus</span></label>
-          </div>
-          <label id="lbl-kode" class="hidden">Kode akses pengurus<input name="kode" placeholder="Minta ke admin RW/RT"></label>
           <button class="btn primary block" type="submit">Daftar / Masuk</button>
         </form>
-        <small class="muted">Data Anda hanya untuk keperluan layanan lingkungan.</small>
+        <small class="muted">Pendaftaran mandiri hanya untuk warga.</small>
+        `}
       </div>
     </div>`;
-  $$('input[name=role]').forEach((r) => r.addEventListener('change', () => {
-    const checked = $('input[name=role]:checked');
-    const isPeng = checked && checked.value === 'pengurus';
-    $('#lbl-kode').classList.toggle('hidden', !isPeng);
-  }));
-  $('#f-login').addEventListener('submit', (e) => {
+  document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => renderLogin(b.dataset.mode)));
+  $('#f-login').addEventListener('submit', async (e) => {
     e.preventDefault();
     const d = formData(e.target);
-    if (!d.nama) { toast('Nama wajib diisi'); return; }
     if (!/^\d{16}$/.test(d.nik || '')) { toast('NIK harus 16 digit angka'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email || '')) { toast('Format email tidak valid'); return; }
-    if (d.role === 'pengurus' && CFG.PENGURUS_CODE && (d.kode || '') !== CFG.PENGURUS_CODE) { toast('Kode pengurus salah'); return; }
-    Session.set({ nama: d.nama, nik: d.nik, email: d.email, role: d.role });
+    if (isPeng) {
+      const list = await getPengurusList();
+      const match = list.find((p) => String(p.nik || '') === d.nik && (!p.email || String(p.email).toLowerCase() === d.email.toLowerCase()));
+      if (!match) { toast('Akun pengurus tidak terdaftar. Hubungi admin RW/RT.'); return; }
+      Session.set({ nama: match.nama || 'Pengurus', nik: d.nik, email: match.email || d.email, role: 'pengurus', jabatan: match.jabatan || '' });
+      toast('Selamat datang, ' + (match.nama || 'Pengurus'));
+      render('beranda');
+      return;
+    }
+    if (!d.nama) { toast('Nama wajib diisi'); return; }
+    Session.set({ nama: d.nama, nik: d.nik, email: d.email, role: 'warga' });
     toast('Selamat datang, ' + d.nama);
     render('beranda');
   });

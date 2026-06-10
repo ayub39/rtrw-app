@@ -3,6 +3,7 @@
 // ============================================================
 const CFG = window.APP_CONFIG;
 const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const rupiah = (n) => 'Rp ' + (Number(n) || 0).toLocaleString('id-ID');
 const tgl = (iso) => { try { return new Date(iso).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }); } catch (e) { return '-'; } };
@@ -24,6 +25,37 @@ const Voted = {
   add(id) { const a = this.all(); a.push(id); localStorage.setItem('siwarga:voted', JSON.stringify(a)); }
 };
 
+// ---------- THEME (dark mode) ----------
+const Theme = {
+  get() { return localStorage.getItem('siwarga:theme') || 'light'; },
+  set(t) { localStorage.setItem('siwarga:theme', t); this.apply(); },
+  toggle() { this.set(this.get() === 'dark' ? 'light' : 'dark'); },
+  apply() {
+    const t = this.get();
+    document.documentElement.setAttribute('data-theme', t);
+    const mc = document.querySelector('meta[name=theme-color]');
+    if (mc) mc.setAttribute('content', t === 'dark' ? '#0b1220' : '#2563eb');
+  }
+};
+
+// ---------- NOTIFICATIONS ----------
+const Notif = {
+  supported() { return 'Notification' in window; },
+  async enable() {
+    if (!this.supported()) { toast('Browser tidak mendukung notifikasi'); return false; }
+    const p = await Notification.requestPermission();
+    if (p === 'granted') { toast('Notifikasi diaktifkan ✅'); this.show('SiWarga', 'Notifikasi berhasil diaktifkan.'); return true; }
+    toast('Izin notifikasi ditolak'); return false;
+  },
+  show(title, body) {
+    try {
+      if (this.supported() && Notification.permission === 'granted' && navigator.serviceWorker) {
+        navigator.serviceWorker.ready.then((reg) => reg.showNotification(title, { body, icon: './icons/icon.svg', badge: './icons/icon.svg' }));
+      }
+    } catch (e) {}
+  }
+};
+
 function badge(status) {
   const map = {
     'Baru': 'blue', 'Menunggu': 'orange', 'Belum': 'red', 'Diproses': 'orange', 'Dibuka': 'green',
@@ -34,8 +66,73 @@ function badge(status) {
 function statusButtons(coll, id, states) {
   return `<div class="actions">${states.map((s) => `<button class="btn ghost mini" data-set="${coll}:${id}:${s}">${s}</button>`).join('')}</div>`;
 }
-function emptyState(msg) { return `<div class="empty">${esc(msg)}</div>`; }
 function delBtn(coll, id) { return `<div class="actions"><button class="btn ghost danger" data-del="${coll}:${id}">Hapus</button></div>`; }
+
+// ---------- EMPTY STATE (hidup) ----------
+function emptyState(msg, icon) {
+  return `<div class="empty"><span class="empty-ic">${ic(icon || 'clipboard')}</span><p>${esc(msg)}</p></div>`;
+}
+
+// ---------- SKELETON LOADING ----------
+function skeleton(n) {
+  n = n || 3;
+  let s = '<div class="skel-wrap">';
+  for (let i = 0; i < n; i++) s += '<div class="skel-card"><div class="skel-line w70"></div><div class="skel-line w95"></div><div class="skel-line w45"></div></div>';
+  return s + '</div>';
+}
+
+// ---------- MODAL KONFIRMASI CUSTOM ----------
+function confirmModal(msg, opts) {
+  opts = opts || {};
+  return new Promise((resolve) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'modal-overlay';
+    wrap.innerHTML = `<div class="modal"><div class="modal-body">${esc(msg)}</div>
+      <div class="modal-actions">
+        <button class="btn ghost" data-mno>${esc(opts.cancelText || 'Batal')}</button>
+        <button class="btn ${opts.danger ? 'danger' : 'primary'}" data-myes>${esc(opts.okText || 'Ya')}</button>
+      </div></div>`;
+    document.body.appendChild(wrap);
+    requestAnimationFrame(() => wrap.classList.add('show'));
+    const close = (v) => { wrap.classList.remove('show'); setTimeout(() => wrap.remove(), 200); resolve(v); };
+    wrap.addEventListener('click', (e) => {
+      if (e.target === wrap || e.target.closest('[data-mno]')) return close(false);
+      if (e.target.closest('[data-myes]')) return close(true);
+    });
+  });
+}
+
+// ---------- TOOLBAR PENCARIAN + FILTER ----------
+function listToolbar(statuses) {
+  const chips = statuses ? `<div class="filter-chips"><button class="fchip active" data-fstatus="">Semua</button>${statuses.map((s) => `<button class="fchip" data-fstatus="${esc(s)}">${esc(s)}</button>`).join('')}</div>` : '';
+  return `<div class="toolbar">
+    <div class="search-wrap">${ic('search')}<input class="search-input" type="search" placeholder="Cari..." aria-label="Cari"></div>
+    ${chips}
+  </div>`;
+}
+function applyListFilter() {
+  const tb = $('.toolbar'); const list = $('.list');
+  if (!tb || !list) return;
+  const inp = $('.search-input', tb);
+  const q = (inp ? inp.value : '').trim().toLowerCase();
+  const active = $('.fchip.active', tb);
+  const st = active ? active.dataset.fstatus : '';
+  let shown = 0;
+  $$('.card', list).forEach((c) => {
+    const text = (c.dataset.text || '').toLowerCase();
+    const status = c.dataset.status || '';
+    const ok = (!q || text.indexOf(q) >= 0) && (!st || status === st);
+    c.style.display = ok ? '' : 'none';
+    if (ok) shown++;
+  });
+  let none = $('.list-none', list);
+  if (shown === 0) {
+    if (!none) { none = document.createElement('div'); none.className = 'empty list-none'; none.innerHTML = `<span class="empty-ic">${ic('search')}</span><p>Tidak ada hasil yang cocok.</p>`; list.appendChild(none); }
+  } else if (none) { none.remove(); }
+}
+function wrapList(html, statuses) {
+  return listToolbar(statuses) + `<div class="list">${html}</div>`;
+}
 
 // ============================================================
 //  LINE ICONS (simple modern, satu gaya stroke)
@@ -50,9 +147,13 @@ const ICON = {
   calendar: '<svg class="ic" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>',
   phone: '<svg class="ic" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>',
   chart: '<svg class="ic" viewBox="0 0 24 24"><line x1="18" x2="18" y1="20" y2="10"/><line x1="12" x2="12" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="14"/></svg>',
+  pie: '<svg class="ic" viewBox="0 0 24 24"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>',
   bell: '<svg class="ic" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>',
   menu: '<svg class="ic" viewBox="0 0 24 24"><line x1="4" x2="20" y1="6" y2="6"/><line x1="4" x2="20" y1="12" y2="12"/><line x1="4" x2="20" y1="18" y2="18"/></svg>',
-  shield: '<svg class="ic" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>'
+  shield: '<svg class="ic" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+  search: '<svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
+  sun: '<svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><line x1="12" x2="12" y1="2" y2="4"/><line x1="12" x2="12" y1="20" y2="22"/><line x1="4.93" y1="4.93" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.07" y2="19.07"/><line x1="2" x2="4" y1="12" y2="12"/><line x1="20" x2="22" y1="12" y2="12"/><line x1="4.93" y1="19.07" x2="6.34" y2="17.66"/><line x1="17.66" y1="6.34" x2="19.07" y2="4.93"/></svg>',
+  moon: '<svg class="ic" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9z"/></svg>'
 };
 const ic = (n) => ICON[n] || '';
 
@@ -69,6 +170,7 @@ const VIEWS = {
   jadwal: { label: 'Jadwal & Ronda', icon: 'calendar' },
   kontak: { label: 'Kontak Penting', icon: 'phone' },
   polling: { label: 'Polling Warga', icon: 'chart' },
+  statistik: { label: 'Statistik', icon: 'pie' },
   notifikasi: { label: 'Notifikasi', icon: 'bell' },
   menu: { label: 'Menu', icon: 'menu' }
 };
@@ -120,14 +222,17 @@ const Views = {
 
   // ---------- MENU (semua modul) ----------
   async menu(user) {
-    const items = MENU_ITEMS.map((id) => `
+    const ids = user.role === 'pengurus' ? MENU_ITEMS.concat(['statistik']) : MENU_ITEMS;
+    const items = ids.map((id) => `
       <button class="quick" data-nav="${id}"><span class="q-ic">${ic(VIEWS[id].icon)}</span><span>${VIEWS[id].label}</span></button>`).join('');
     return `<div class="section-title">Semua Layanan</div><div class="quick-grid">${items}</div>
       <div class="card"><div class="card-body profile-row">
         <div class="avatar big">${esc((user.nama || 'U')[0].toUpperCase())}</div>
         <div><strong>${esc(user.nama)}</strong><div class="muted">${user.role === 'pengurus' ? 'Pengurus RT/RW' : 'Warga'}${user.email ? ' • ' + esc(user.email) : ''}</div></div>
         <button class="btn ghost danger" id="btn-logout">Keluar</button>
-      </div></div>`;
+      </div></div>
+      <div class="card"><div class="card-body row-between"><div><strong>Mode gelap</strong><div class="muted">Ganti tampilan terang / gelap</div></div>
+        <button class="btn ghost" data-theme-toggle>${Theme.get() === 'dark' ? 'Terang' : 'Gelap'}</button></div></div>`;
   },
 
   // ---------- LAPOR MASALAH ----------
@@ -143,14 +248,15 @@ const Views = {
         <label>Deskripsi<textarea name="deskripsi" rows="3" required placeholder="Jelaskan detail masalahnya..."></textarea></label>
         <button class="btn primary" type="submit">Kirim Laporan</button>
       </div></form>`;
-    const list = rows.map((r) => `
-      <div class="card"><div class="card-body">
+    const cards = rows.map((r) => `
+      <div class="card" data-status="${esc(r.status)}" data-text="${esc((r.judul || '') + ' ' + (r.kategori || '') + ' ' + (r.lokasi || '') + ' ' + (r.deskripsi || '') + ' ' + (r.pelapor || ''))}"><div class="card-body">
         <div class="row-between"><strong>${esc(r.judul)}</strong>${badge(r.status)}</div>
         <div class="chips"><span class="chip">${esc(r.kategori)}</span><span class="chip">📍 ${esc(r.lokasi || '-')}</span></div>
         <p class="muted">${esc(r.deskripsi)}</p>
         <small class="muted">Oleh ${esc(r.pelapor)} • ${tgl(r.createdAt)}</small>
         ${role === 'pengurus' ? statusButtons('laporan', r.id, ['Baru', 'Diproses', 'Selesai']) : ''}
-      </div></div>`).join('') || emptyState('Belum ada laporan.');
+      </div></div>`).join('');
+    const list = rows.length ? wrapList(cards, ['Baru', 'Diproses', 'Selesai']) : emptyState('Belum ada laporan. Jadilah yang pertama melapor.', 'clipboard');
     return form + `<div class="section-title">Daftar Laporan</div>` + list;
   },
 
@@ -167,14 +273,15 @@ const Views = {
         <label>Deskripsi<textarea name="deskripsi" rows="3" required placeholder="Jelaskan bantuan yang dibutuhkan..."></textarea></label>
         <button class="btn primary" type="submit">Kirim Permintaan</button>
       </div></form>`;
-    const list = rows.map((r) => `
-      <div class="card"><div class="card-body">
+    const cards = rows.map((r) => `
+      <div class="card" data-status="${esc(r.status)}" data-text="${esc((r.jenis || '') + ' ' + (r.deskripsi || '') + ' ' + (r.pemohon || '') + ' ' + (r.urgensi || ''))}"><div class="card-body">
         <div class="row-between"><strong>${esc(r.jenis)}</strong>${badge(r.status)}</div>
         <div class="chips"><span class="chip urg-${esc((r.urgensi || '').toLowerCase())}">Urgensi: ${esc(r.urgensi)}</span></div>
         <p class="muted">${esc(r.deskripsi)}</p>
         <small class="muted">Oleh ${esc(r.pemohon)} • ${tgl(r.createdAt)}</small>
         ${role === 'pengurus' ? statusButtons('bantuan', r.id, ['Baru', 'Diproses', 'Selesai']) : ''}
-      </div></div>`).join('') || emptyState('Belum ada permintaan bantuan.');
+      </div></div>`).join('');
+    const list = rows.length ? wrapList(cards, ['Baru', 'Diproses', 'Selesai']) : emptyState('Belum ada permintaan bantuan.', 'lifebuoy');
     return form + `<div class="section-title">Daftar Permintaan</div>` + list;
   },
 
@@ -190,13 +297,14 @@ const Views = {
         <label class="check"><input type="checkbox" name="pinned"> Sematkan di beranda</label>
         <button class="btn primary" type="submit">Terbitkan</button>
       </div></form>` : '';
-    const list = rows.map((r) => `
-      <div class="card"><div class="card-body">
+    const cards = rows.map((r) => `
+      <div class="card" data-text="${esc((r.judul || '') + ' ' + (r.isi || '') + ' ' + (r.kategori || '') + ' ' + (r.author || ''))}"><div class="card-body">
         <div class="row-between"><strong>${r.pinned ? '📌 ' : ''}${esc(r.judul)}</strong><span class="chip">${esc(r.kategori)}</span></div>
         <p class="muted">${esc(r.isi)}</p>
         <small class="muted">${esc(r.author || 'Pengurus')} • ${tgl(r.createdAt)}</small>
         ${role === 'pengurus' ? delBtn('pengumuman', r.id) : ''}
-      </div></div>`).join('') || emptyState('Belum ada pengumuman.');
+      </div></div>`).join('');
+    const list = rows.length ? wrapList(cards) : emptyState('Belum ada pengumuman.', 'megaphone');
     return form + `<div class="section-title">Semua Pengumuman</div>` + list;
   },
 
@@ -219,15 +327,16 @@ const Views = {
         <label>Status<select name="status"><option>Tetap</option><option>Kontrak</option><option>Kost</option></select></label>
         <button class="btn primary" type="submit">Simpan</button>
       </div></form>` : `<div class="callout blue"><div>ℹ️</div><div>Data warga dikelola oleh pengurus RT/RW.</div></div>`;
-    const list = rows.map((r) => `
-      <div class="card"><div class="card-body">
+    const cards = rows.map((r) => `
+      <div class="card" data-text="${esc((r.nama || '') + ' ' + (r.nik || '') + ' ' + (r.alamat || '') + ' RT' + (r.rt || '') + ' RW' + (r.rw || '') + ' ' + (r.status || '') + ' ' + (r.telp || ''))}"><div class="card-body">
         <div class="row-between"><strong>${esc(r.nama)}</strong><span class="chip">RT ${esc(r.rt)}/RW ${esc(r.rw)}</span></div>
         <div class="kv"><span>NIK</span><b>${esc(r.nik || '-')}</b></div>
         <div class="kv"><span>Alamat</span><b>${esc(r.alamat || '-')}</b></div>
         <div class="kv"><span>Anggota</span><b>${esc(r.jmlAnggota || '-')} jiwa</b></div>
         <div class="chips"><span class="chip">${esc(r.status)}</span>${r.telp ? `<a class="chip link" href="tel:${esc(r.telp)}">📞 ${esc(r.telp)}</a>` : ''}</div>
         ${role === 'pengurus' ? delBtn('warga', r.id) : ''}
-      </div></div>`).join('') || emptyState('Belum ada data warga.');
+      </div></div>`).join('');
+    const list = rows.length ? wrapList(cards) : emptyState('Belum ada data warga.', 'users');
     return head + form + `<div class="section-title">Daftar Warga</div>` + list;
   },
 
@@ -248,11 +357,12 @@ const Views = {
         <label>Keperluan<textarea name="keperluan" rows="2" required placeholder="cth: untuk pendaftaran sekolah anak"></textarea></label>
         <button class="btn primary" type="submit">Kirim Pengajuan</button>
       </div></form>`;
-    const list = rows.map((r) => `
-      <div class="card"><div class="card-body"><div class="row-between"><strong>${esc(r.jenis)}</strong>${badge(r.status)}</div>
+    const cards = rows.map((r) => `
+      <div class="card" data-status="${esc(r.status)}" data-text="${esc((r.jenis || '') + ' ' + (r.keperluan || '') + ' ' + (r.pemohon || ''))}"><div class="card-body"><div class="row-between"><strong>${esc(r.jenis)}</strong>${badge(r.status)}</div>
       <p class="muted">${esc(r.keperluan)}</p><small class="muted">Oleh ${esc(r.pemohon)} • ${tgl(r.createdAt)}</small>
       ${role === 'pengurus' ? statusButtons('surat', r.id, ['Menunggu', 'Disetujui', 'Ditolak', 'Selesai']) : ''}
-      </div></div>`).join('') || emptyState('Belum ada pengajuan.');
+      </div></div>`).join('');
+    const list = rows.length ? wrapList(cards, ['Menunggu', 'Disetujui', 'Ditolak', 'Selesai']) : emptyState('Belum ada pengajuan surat.', 'mail');
     return form + `<div class="section-title">Riwayat Pengajuan</div>` + list;
   },
 
@@ -277,7 +387,7 @@ const Views = {
         ${r.lokasi ? `<div class="kv"><span>Lokasi</span><b>${esc(r.lokasi)}</b></div>` : ''}
         ${r.petugas ? `<div class="kv"><span>Petugas</span><b>${esc(r.petugas)}</b></div>` : ''}
         ${role === 'pengurus' ? delBtn('jadwal', r.id) : ''}
-      </div></div>`).join('') || emptyState('Belum ada jadwal.');
+      </div></div>`).join('') || emptyState('Belum ada jadwal.', 'calendar');
     return form + `<div class="section-title">Jadwal Mendatang</div>` + list;
   },
 
@@ -294,12 +404,13 @@ const Views = {
         <button class="btn primary" type="submit">Simpan Kontak</button>
       </div></form>` : '';
     const icon = { 'RT/RW': ic('home'), Kesehatan: ic('lifebuoy'), Keamanan: ic('shield'), Darurat: ic('bell'), Lainnya: ic('phone') };
-    const list = rows.map((r) => `
-      <div class="card"><div class="card-body contact-row">
+    const cards = rows.map((r) => `
+      <div class="card" data-text="${esc((r.nama || '') + ' ' + (r.peran || '') + ' ' + (r.kategori || '') + ' ' + (r.telp || ''))}"><div class="card-body contact-row">
         <div class="c-ic">${icon[r.kategori] || ic('phone')}</div>
         <div class="c-info"><strong>${esc(r.nama)}</strong><div class="muted">${esc(r.peran || r.kategori)}</div></div>
         <a class="btn ghost" href="tel:${esc(r.telp)}">📞 Telp</a>
-      </div>${role === 'pengurus' ? `<div class="card-body pt0">${delBtn('kontak', r.id)}</div>` : ''}</div>`).join('') || emptyState('Belum ada kontak.');
+      </div>${role === 'pengurus' ? `<div class="card-body pt0">${delBtn('kontak', r.id)}</div>` : ''}</div>`).join('');
+    const list = rows.length ? wrapList(cards) : emptyState('Belum ada kontak.', 'phone');
     return form + `<div class="section-title">Direktori Kontak</div>` + list;
   },
 
@@ -331,158 +442,234 @@ const Views = {
         <small class="muted">${total} suara • ${tgl(r.createdAt)}</small>
         ${role === 'pengurus' ? `<div class="actions">${r.status === 'Dibuka' ? `<button class="btn ghost mini" data-set="polling:${r.id}:Ditutup">Tutup</button>` : `<button class="btn ghost mini" data-set="polling:${r.id}:Dibuka">Buka lagi</button>`}<button class="btn ghost danger mini" data-del="polling:${r.id}">Hapus</button></div>` : ''}
       </div></div>`;
-    }).join('') || emptyState('Belum ada polling.');
+    }).join('') || emptyState('Belum ada polling.', 'chart');
     return form + `<div class="section-title">Polling Aktif</div>` + list;
+  },
+
+  // ---------- STATISTIK (pengurus) ----------
+  async statistik(user) {
+    if (user.role !== 'pengurus') return `<div class="callout blue"><div>ℹ️</div><div>Halaman statistik hanya untuk pengurus RT/RW.</div></div>`;
+    const [lap, ban, sur, war, iur] = await Promise.all([DB.list('laporan'), DB.list('bantuan'), DB.list('surat'), DB.list('warga'), DB.list('iuran')]);
+    const totJiwa = war.reduce((s, r) => s + (Number(r.jmlAnggota) || 0), 0);
+    const aktif = lap.filter((x) => x.status !== 'Selesai').length;
+    const suratPending = sur.filter((x) => x.status === 'Menunggu').length;
+    const sc = (val, lbl, icon, tone) => `<div class="stat" data-tone="${tone}"><div class="stat-ic">${ic(icon)}</div><div><div class="stat-val">${val}</div><div class="stat-lbl">${lbl}</div></div></div>`;
+    const bar = (label, val, max, cls) => {
+      const pct = max ? Math.round(val / max * 100) : 0;
+      return `<div class="bar-row"><span class="bar-lbl">${esc(label)}</span><div class="bar-track"><div class="bar-fill ${cls || ''}" style="width:${pct}%"></div></div><span class="bar-val">${val}</span></div>`;
+    };
+    const lstat = [['Baru', 'tone-red'], ['Diproses', 'tone-orange'], ['Selesai', 'tone-green']].map((x) => [x[0], lap.filter((l) => l.status === x[0]).length, x[1]]);
+    const maxL = Math.max(1, ...lstat.map((x) => x[1]));
+    const lapStatBars = lstat.map((x) => bar(x[0], x[1], maxL, x[2])).join('');
+    const katMap = {}; lap.forEach((l) => { const k = l.kategori || 'Lainnya'; katMap[k] = (katMap[k] || 0) + 1; });
+    const kats = Object.keys(katMap).map((k) => [k, katMap[k]]).sort((a, b) => b[1] - a[1]);
+    const maxKat = Math.max(1, ...kats.map((k) => k[1]));
+    const katBars = kats.length ? kats.map((k) => bar(k[0], k[1], maxKat)).join('') : emptyState('Belum ada data laporan.', 'chart');
+    const sstat = ['Menunggu', 'Disetujui', 'Ditolak', 'Selesai'].map((s) => [s, sur.filter((x) => x.status === s).length]);
+    const maxS = Math.max(1, ...sstat.map((x) => x[1]));
+    const suratBars = sstat.map((x) => bar(x[0], x[1], maxS)).join('');
+    const rtMap = {}; war.forEach((w) => { const k = 'RT ' + (w.rt || '-'); rtMap[k] = (rtMap[k] || 0) + 1; });
+    const rts = Object.keys(rtMap).sort().map((k) => [k, rtMap[k]]);
+    const maxRt = Math.max(1, ...rts.map((k) => k[1]));
+    const rtBars = rts.length ? rts.map((k) => bar(k[0], k[1], maxRt)).join('') : emptyState('Belum ada data warga.', 'users');
+    const lunas = iur.filter((x) => x.status === 'Lunas').length;
+    const belum = iur.filter((x) => x.status === 'Belum').length;
+    const bantuanAktif = ban.filter((x) => x.status !== 'Selesai').length;
+    return `
+      <div class="stat-grid">
+        ${sc(war.length, 'Kepala Keluarga', 'home', 'blue')}
+        ${sc(totJiwa, 'Total Jiwa', 'users', 'green')}
+        ${sc(aktif, 'Laporan Aktif', 'clipboard', 'orange')}
+        ${sc(suratPending, 'Surat Menunggu', 'mail', 'red')}
+      </div>
+      <div class="card"><div class="card-body"><h3>Laporan per Status</h3>${lapStatBars}</div></div>
+      <div class="card"><div class="card-body"><h3>Laporan per Kategori</h3>${katBars}</div></div>
+      <div class="card"><div class="card-body"><h3>Surat per Status</h3>${suratBars}</div></div>
+      <div class="card"><div class="card-body"><h3>Warga per RT</h3>${rtBars}</div></div>
+      <div class="card"><div class="card-body"><h3>Ringkasan Lain</h3>
+        <div class="kv"><span>Permintaan bantuan aktif</span><b>${bantuanAktif}</b></div>
+        <div class="kv"><span>Iuran lunas</span><b>${lunas}</b></div>
+        <div class="kv"><span>Iuran belum bayar</span><b>${belum}</b></div>
+      </div></div>`;
   },
 
   // ---------- NOTIFIKASI / STATUS SAYA ----------
   async notifikasi(user) {
     const [lap, ban, sur, peng] = await Promise.all([DB.list('laporan'), DB.list('bantuan'), DB.list('surat'), DB.list('pengumuman')]);
     const mine = [
-      ...lap.filter((x) => x.pelapor === user.nama).map((x) => ({ t: 'Laporan', label: x.judul, status: x.status, at: x.createdAt, ic: ic('clipboard') })),
-      ...ban.filter((x) => x.pemohon === user.nama).map((x) => ({ t: 'Bantuan', label: x.jenis, status: x.status, at: x.createdAt, ic: ic('lifebuoy') })),
-      ...sur.filter((x) => x.pemohon === user.nama).map((x) => ({ t: 'Surat', label: x.jenis, status: x.status, at: x.createdAt, ic: ic('mail') }))
+      ...lap.filter((x) => x.pelapor === user.nama).map((x) => ({ t: 'Laporan', label: x.judul, status: x.status, at: x.createdAt, icon: 'clipboard' })),
+      ...ban.filter((x) => x.pemohon === user.nama).map((x) => ({ t: 'Bantuan', label: x.jenis, status: x.status, at: x.createdAt, icon: 'lifebuoy' })),
+      ...sur.filter((x) => x.pemohon === user.nama).map((x) => ({ t: 'Surat', label: x.jenis, status: x.status, at: x.createdAt, icon: 'mail' }))
     ].sort((a, b) => (b.at || '').localeCompare(a.at || ''));
     const mineList = mine.map((m) => `
-      <div class="card"><div class="card-body"><div class="row-between"><strong><span class="inline-ic">${m.ic}</span> ${esc(m.label)}</strong>${badge(m.status)}</div>
-      <small class="muted">${esc(m.t)} • ${tgl(m.at)}</small></div></div>`).join('') || emptyState('Belum ada pengajuan atas nama Anda.');
-    const info = peng.slice(0, 5).map((p) => `
-      <div class="card"><div class="card-body"><strong>${esc(p.judul)}</strong><p class="muted">${esc(p.isi)}</p><small class="muted">${tgl(p.createdAt)}</small></div></div>`).join('') || emptyState('Belum ada info.');
-    return `<div class="callout blue"><div><span class="inline-ic">${ic('bell')}</span></div><div>Pantau status laporan, bantuan, dan surat yang Anda ajukan di sini.</div></div>
+      <div class="card"><div class="card-body"><div class="row-between"><strong><span class="inline-ic">${ic(m.icon)}</span> ${esc(m.label)}</strong>${badge(m.status)}</div>
+      <small class="muted">${esc(m.t)} • ${tgl(m.at)}</small></div></div>`).join('') || emptyState('Belum ada pengajuan atas nama Anda.', 'bell');
+    const info = peng.slice(0, 6).map((p) => `
+      <div class="card"><div class="card-body"><div class="row-between"><strong><span class="inline-ic">${ic('megaphone')}</span> ${esc(p.judul)}</strong>${p.pinned ? '<span class="chip">📌</span>' : ''}</div>
+      <p class="muted">${esc(p.isi)}</p><small class="muted">${tgl(p.createdAt)}</small></div></div>`).join('') || emptyState('Belum ada pengumuman.', 'megaphone');
+    const notifBtn = (Notif.supported() && Notification.permission !== 'granted')
+      ? `<button class="btn primary block" data-notif-enable>🔔 Aktifkan Notifikasi</button>`
+      : `<div class="callout green"><div>✅</div><div>Notifikasi aktif di perangkat ini.</div></div>`;
+    return `<div class="card"><div class="card-body">${notifBtn}</div></div>
       <div class="section-title">Status Pengajuan Saya</div>${mineList}
-      <div class="section-title">Info Terbaru</div>${info}`;
+      <div class="section-title">Info & Pengumuman</div>${info}`;
   }
 };
 
+// ============================================================
+//  HELPERS DATA
+// ============================================================
 async function countMine(nama) {
   const [lap, ban, sur] = await Promise.all([DB.list('laporan'), DB.list('bantuan'), DB.list('surat')]);
   return lap.filter((x) => x.pelapor === nama).length + ban.filter((x) => x.pemohon === nama).length + sur.filter((x) => x.pemohon === nama).length;
 }
+function formData(form) {
+  const fd = new FormData(form); const o = {};
+  fd.forEach((v, k) => { o[k] = typeof v === 'string' ? v.trim() : v; });
+  return o;
+}
 
 // ============================================================
-//  ROUTER
+//  ROUTER / RENDER
 // ============================================================
-async function render(viewId) {
+async function render(view) {
   const user = Session.get();
   if (!user) return renderLogin();
-  const view = VIEWS[viewId] ? viewId : 'beranda';
+  view = view || localStorage.getItem('siwarga:lastView') || 'beranda';
+  if (!VIEWS[view]) view = 'beranda';
   localStorage.setItem('siwarga:lastView', view);
-  const activeTab = TABS.includes(view) ? view : 'menu';
-
   $('#app').innerHTML = `
     <header class="topbar">
       <div><div class="tb-title">${ic(VIEWS[view].icon)} ${esc(VIEWS[view].label)}</div>
       <div class="tb-sub">${esc(CFG.WILAYAH.nama)}</div></div>
-      <button class="avatar" id="btn-profile" title="${esc(user.nama)}">${esc((user.nama || 'U')[0].toUpperCase())}</button>
+      <div class="topbar-actions">
+        <button class="icon-btn" data-theme-toggle title="Ganti tema">${ic(Theme.get() === 'dark' ? 'sun' : 'moon')}</button>
+        <button class="avatar" id="btn-profile" title="Menu & profil">${esc((user.nama || 'U')[0].toUpperCase())}</button>
+      </div>
     </header>
-    <main class="content" id="content"><div class="loading">Memuat…</div></main>
-    <nav class="tabbar">${TABS.map((id) => `<button class="tab ${id === activeTab ? 'active' : ''}" data-nav="${id}"><span>${ic(VIEWS[id].icon)}</span><small>${VIEWS[id].label}</small></button>`).join('')}</nav>`;
-
-  $('#content').innerHTML = await Views[view](user);
-  bindForms(view);
+    <main class="content" id="content">${skeleton()}</main>
+    <nav class="tabbar">${TABS.map((t) => `<button class="tab ${t === view ? 'active' : ''}" data-nav="${t}">${ic(VIEWS[t].icon)}<span>${VIEWS[t].label}</span></button>`).join('')}</nav>`;
+  try {
+    $('#content').innerHTML = await Views[view](user);
+  } catch (err) {
+    console.error(err);
+    $('#content').innerHTML = emptyState('Gagal memuat halaman. Coba lagi.', 'bell');
+  }
 }
 
 function renderLogin() {
   $('#app').innerHTML = `
-    <div class="login"><div class="login-card">
-      <div class="brand"><div class="logo">🏘️</div><h1>SiWarga</h1><p>Layanan digital RT/RW</p></div>
-      <form id="f-login">
-        <label>Nama Anda<input name="nama" required placeholder="Nama lengkap"></label>
-        <label>NIK<input name="nik" required inputmode="numeric" maxlength="16" placeholder="16 digit NIK (sesuai KTP)"></label>
-        <label>Email<input name="email" type="email" required placeholder="email@contoh.com"></label>
-        <label>Masuk sebagai</label>
-        <div class="role-pick">
-          <label class="role-opt"><input type="radio" name="role" value="warga" checked><span>👤 Warga</span></label>
-          <label class="role-opt"><input type="radio" name="role" value="pengurus"><span>🛡️ Pengurus</span></label>
-        </div>
-        <button class="btn primary block" type="submit">Daftar / Masuk</button>
-      </form>
-      <p class="login-note">Mode demo — data tersimpan di perangkat Anda.${DB.backend === 'supabase' ? ' Terhubung Supabase.' : ''}</p>
-    </div></div>`;
+    <div class="login">
+      <div class="login-card">
+        <div class="login-logo">🏘️</div>
+        <h1>SiWarga</h1>
+        <p class="muted">Layanan digital RT/RW — ${esc(CFG.WILAYAH.nama)}</p>
+        <form id="f-login" class="form">
+          <label>Nama lengkap<input name="nama" required placeholder="Nama sesuai KTP"></label>
+          <label>NIK (16 digit)<input name="nik" inputmode="numeric" maxlength="16" required placeholder="contoh: 3201xxxxxxxxxxxx"></label>
+          <label>Email<input name="email" type="email" required placeholder="email@contoh.com"></label>
+          <div class="role-pick">
+            <label class="role-opt"><input type="radio" name="role" value="warga" checked><span>👤 Warga</span></label>
+            <label class="role-opt"><input type="radio" name="role" value="pengurus"><span>🛡️ Pengurus</span></label>
+          </div>
+          <label id="lbl-kode" class="hidden">Kode akses pengurus<input name="kode" placeholder="Minta ke admin RW/RT"></label>
+          <button class="btn primary block" type="submit">Daftar / Masuk</button>
+        </form>
+        <small class="muted">Data Anda hanya untuk keperluan layanan lingkungan.</small>
+      </div>
+    </div>`;
+  $$('input[name=role]').forEach((r) => r.addEventListener('change', () => {
+    const checked = $('input[name=role]:checked');
+    const isPeng = checked && checked.value === 'pengurus';
+    $('#lbl-kode').classList.toggle('hidden', !isPeng);
+  }));
   $('#f-login').addEventListener('submit', (e) => {
     e.preventDefault();
-    const fd = new FormData(e.target);
-    const nik = (fd.get('nik') || '').trim();
-    const email = (fd.get('email') || '').trim();
-    if (!/^\d{16}$/.test(nik)) { toast('NIK harus 16 digit angka'); return; }
-    Session.set({ nama: fd.get('nama').trim(), nik, email, role: fd.get('role') });
-    toast('Selamat datang, ' + fd.get('nama'));
+    const d = formData(e.target);
+    if (!d.nama) { toast('Nama wajib diisi'); return; }
+    if (!/^\d{16}$/.test(d.nik || '')) { toast('NIK harus 16 digit angka'); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email || '')) { toast('Format email tidak valid'); return; }
+    if (d.role === 'pengurus' && CFG.PENGURUS_CODE && (d.kode || '') !== CFG.PENGURUS_CODE) { toast('Kode pengurus salah'); return; }
+    Session.set({ nama: d.nama, nik: d.nik, email: d.email, role: d.role });
+    toast('Selamat datang, ' + d.nama);
     render('beranda');
   });
 }
 
 // ============================================================
-//  FORM HANDLERS
+//  EVENT HANDLERS (delegasi global)
 // ============================================================
-function formData(form) { return Object.fromEntries(new FormData(form).entries()); }
-function bindForms(view) {
-  const user = Session.get();
-  const onSubmit = (sel, coll, build, msg) => {
-    const f = $(sel); if (!f) return;
-    f.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      await DB.add(coll, build(formData(f)));
-      toast(msg); render(view);
-    });
+document.addEventListener('submit', async (e) => {
+  const f = e.target; const user = Session.get(); if (!user) return;
+  const map = {
+    'f-lapor': (d) => DB.add('laporan', { judul: d.judul, kategori: d.kategori, lokasi: d.lokasi, deskripsi: d.deskripsi, status: 'Baru', pelapor: user.nama }),
+    'f-bantuan': (d) => DB.add('bantuan', { jenis: d.jenis, urgensi: d.urgensi, deskripsi: d.deskripsi, status: 'Baru', pemohon: user.nama }),
+    'f-surat': (d) => DB.add('surat', { jenis: d.jenis, keperluan: d.keperluan, status: 'Menunggu', pemohon: user.nama }),
+    'f-peng': (d) => DB.add('pengumuman', { judul: d.judul, isi: d.isi, kategori: d.kategori, pinned: !!d.pinned, author: user.nama }),
+    'f-warga': (d) => DB.add('warga', { nama: d.nama, nik: d.nik, kk: d.kk, alamat: d.alamat, rt: d.rt, rw: d.rw, telp: d.telp, status: d.status, jmlAnggota: Number(d.jmlAnggota) || 1 }),
+    'f-jadwal': (d) => DB.add('jadwal', { judul: d.judul, tipe: d.tipe, tanggal: d.tanggal, waktu: d.waktu, lokasi: d.lokasi, petugas: d.petugas }),
+    'f-kontak': (d) => DB.add('kontak', { nama: d.nama, peran: d.peran, telp: d.telp, kategori: d.kategori }),
+    'f-polling': (d) => { const opsi = [d.o1, d.o2, d.o3, d.o4].filter(Boolean).map((t) => ({ text: t, votes: 0 })); return DB.add('polling', { judul: d.judul, opsi, status: 'Dibuka', author: user.nama }); }
   };
-  onSubmit('#f-lapor', 'laporan', (d) => ({ ...d, status: 'Baru', pelapor: user.nama }), 'Laporan terkirim ✅');
-  onSubmit('#f-bantuan', 'bantuan', (d) => ({ ...d, status: 'Baru', pemohon: user.nama }), 'Permintaan terkirim ✅');
-  onSubmit('#f-surat', 'surat', (d) => ({ ...d, status: 'Menunggu', pemohon: user.nama }), 'Pengajuan terkirim ✅');
-  onSubmit('#f-peng', 'pengumuman', (d) => ({ ...d, pinned: !!d.pinned, author: user.nama }), 'Pengumuman terbit ✅');
-  onSubmit('#f-warga', 'warga', (d) => ({ ...d, jmlAnggota: Number(d.jmlAnggota) || 1 }), 'Data warga tersimpan ✅');
-  onSubmit('#f-jadwal', 'jadwal', (d) => ({ ...d }), 'Jadwal tersimpan ✅');
-  onSubmit('#f-kontak', 'kontak', (d) => ({ ...d }), 'Kontak tersimpan ✅');
-  onSubmit('#f-polling', 'polling', (d) => ({
-    judul: d.judul, status: 'Dibuka', author: user.nama,
-    opsi: [d.o1, d.o2, d.o3, d.o4].filter((x) => x && x.trim()).map((t) => ({ text: t.trim(), votes: 0 }))
-  }), 'Polling terbit ✅');
-}
+  if (map[f.id]) {
+    e.preventDefault();
+    await map[f.id](formData(f));
+    toast('Berhasil disimpan ✅');
+    render(localStorage.getItem('siwarga:lastView'));
+  }
+});
 
-// ============================================================
-//  GLOBAL CLICK HANDLER
-// ============================================================
+document.addEventListener('input', (e) => { if (e.target.closest('.search-input')) applyListFilter(); });
+
 document.addEventListener('click', async (e) => {
+  const fchip = e.target.closest('.fchip');
+  if (fchip) { $$('.fchip', fchip.parentElement).forEach((x) => x.classList.remove('active')); fchip.classList.add('active'); applyListFilter(); return; }
+  const tt = e.target.closest('[data-theme-toggle]');
+  if (tt) { Theme.toggle(); render(localStorage.getItem('siwarga:lastView')); return; }
+  const ne = e.target.closest('[data-notif-enable]');
+  if (ne) { await Notif.enable(); render(localStorage.getItem('siwarga:lastView')); return; }
+  const prof = e.target.closest('#btn-profile');
+  if (prof) { render('menu'); return; }
+  const logout = e.target.closest('#btn-logout');
+  if (logout) { if (await confirmModal('Keluar dari akun?', { okText: 'Keluar' })) { Session.clear(); render(); } return; }
   const nav = e.target.closest('[data-nav]');
   if (nav) { render(nav.dataset.nav); return; }
-
-  const vote = e.target.closest('[data-vote]');
-  if (vote && !vote.disabled) {
-    const [id, idx] = vote.dataset.vote.split(':');
-    if (Voted.has(id)) { toast('Anda sudah memilih'); return; }
-    const poll = (await DB.list('polling')).find((p) => p.id === id);
-    if (poll && poll.status === 'Dibuka') {
-      const opsi = poll.opsi.map((o, i) => i === Number(idx) ? { ...o, votes: (o.votes || 0) + 1 } : o);
-      await DB.update('polling', id, { opsi });
-      Voted.add(id); toast('Suara Anda tercatat ✅'); render('polling');
-    }
+  const setb = e.target.closest('[data-set]');
+  if (setb) {
+    const parts = setb.dataset.set.split(':'); const coll = parts[0], id = parts[1], status = parts[2];
+    await DB.update(coll, id, { status });
+    toast('Status: ' + status);
+    Notif.show('SiWarga', 'Status diperbarui menjadi ' + status + '.');
+    render(localStorage.getItem('siwarga:lastView'));
     return;
-  }
-  const set = e.target.closest('[data-set]');
-  if (set) {
-    const [coll, id, status] = set.dataset.set.split(':');
-    await DB.update(coll, id, { status }); toast('Status: ' + status);
-    render(localStorage.getItem('siwarga:lastView')); return;
   }
   const del = e.target.closest('[data-del]');
   if (del) {
-    const [coll, id] = del.dataset.del.split(':');
-    if (confirm('Hapus data ini?')) { await DB.remove(coll, id); toast('Data dihapus'); render(localStorage.getItem('siwarga:lastView')); }
+    const parts = del.dataset.del.split(':'); const coll = parts[0], id = parts[1];
+    if (await confirmModal('Hapus data ini? Tindakan ini tidak bisa dibatalkan.', { danger: true, okText: 'Hapus' })) {
+      await DB.remove(coll, id); toast('Data dihapus'); render(localStorage.getItem('siwarga:lastView'));
+    }
     return;
   }
-  if (e.target.closest('#btn-logout') || e.target.closest('#btn-profile')) {
-    if (e.target.closest('#btn-profile')) { render('menu'); return; }
-    if (confirm('Keluar dari akun?')) { Session.clear(); render(); }
+  const vote = e.target.closest('[data-vote]');
+  if (vote) {
+    const parts = vote.dataset.vote.split(':'); const id = parts[0], idx = Number(parts[1]);
+    if (Voted.has(id)) { toast('Anda sudah memilih'); return; }
+    const rows = await DB.list('polling'); const p = rows.find((x) => x.id === id);
+    if (p && p.status === 'Dibuka') {
+      const opsi = p.opsi.slice(); opsi[idx].votes = (opsi[idx].votes || 0) + 1;
+      await DB.update('polling', id, { opsi }); Voted.add(id); toast('Suara terkirim ✅'); render('polling');
+    }
+    return;
   }
 });
 
 // ============================================================
-//  BOOTSTRAP
+//  INIT
 // ============================================================
 (async function init() {
-  await DB.seedIfEmpty();
-  const last = localStorage.getItem('siwarga:lastView') || 'beranda';
-  Session.get() ? render(last) : renderLogin();
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
-  }
+  Theme.apply();
+  try { if (DB.seedIfEmpty) await DB.seedIfEmpty(); } catch (e) {}
+  render();
+  if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js').catch(() => {}); }
 })();

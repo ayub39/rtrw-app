@@ -184,15 +184,17 @@ const VIEWS = {
   notifikasi: { label: 'Notifikasi', icon: 'bell' },
   menu: { label: 'Menu', icon: 'menu' }
 };
-const TABS = ['beranda', 'lapor', 'surat', 'pengumuman', 'menu'];
+const TABS_WARGA = ['beranda', 'lapor', 'surat', 'pengumuman', 'menu'];
+const TABS_PENGURUS = ['beranda', 'surat', 'lapor', 'statistik', 'menu'];
 const MENU_ITEMS = ['lapor', 'bantuan', 'surat', 'jadwal', 'pengumuman', 'warga', 'kontak', 'polling', 'notifikasi'];
 
 // ============================================================
 //  VIEWS
 // ============================================================
 const Views = {
-  // ---------- DASHBOARD ----------
+  // ---------- DASHBOARD (router by role) ----------
   async beranda(user) {
+    if (user.role === 'pengurus') return this._berandaPengurus(user);
     const [lap, ban, sur, peng] = await Promise.all([
       DB.list('laporan'), DB.list('bantuan'), DB.list('surat'), DB.list('pengumuman')
     ]);
@@ -207,7 +209,7 @@ const Views = {
       <div class="hero-card"><div class="hero-greet">
         <div><span class="hero-hi">${sapa},</span><strong class="hero-name">${esc(user.nama)} 👋</strong>
         <div class="hero-loc">📍 ${esc(CFG.WILAYAH.nama)}</div></div>
-        <span class="hero-role">${user.role === 'pengurus' ? '🛡️ Pengurus' : '👤 Warga'}</span>
+        <span class="hero-role">👤 Warga</span>
       </div></div>
       <div class="section-title">Ringkasan</div>
       <div class="stat-grid">
@@ -230,6 +232,61 @@ const Views = {
       </div>`;
   },
 
+  // ---------- DASHBOARD PENGURUS (panel admin RT/RW) ----------
+  async _berandaPengurus(user) {
+    const [lap, ban, sur, war, peng] = await Promise.all([
+      DB.list('laporan'), DB.list('bantuan'), DB.list('surat'), DB.list('warga'), DB.list('pengumuman')
+    ]);
+    const jam = new Date().getHours();
+    const sapa = jam < 11 ? 'Selamat pagi' : jam < 15 ? 'Selamat siang' : jam < 18 ? 'Selamat sore' : 'Selamat malam';
+    const suratPending = sur.filter((x) => x.status === 'Menunggu');
+    const laporBaru = lap.filter((x) => x.status === 'Baru');
+    const banBaru = ban.filter((x) => x.status === 'Baru');
+    const inbox = [
+      ...suratPending.map((x) => ({ coll: 'surat', id: x.id, t: 'Surat', icon: 'mail', judul: x.jenis, sub: x.keperluan, oleh: x.pemohon, at: x.createdAt, states: ['Disetujui', 'Ditolak', 'Selesai'] })),
+      ...banBaru.map((x) => ({ coll: 'bantuan', id: x.id, t: 'Bantuan', icon: 'lifebuoy', judul: x.jenis, sub: x.deskripsi, oleh: x.pemohon, at: x.createdAt, states: ['Diproses', 'Selesai'] })),
+      ...laporBaru.map((x) => ({ coll: 'laporan', id: x.id, t: 'Laporan', icon: 'clipboard', judul: x.judul, sub: x.deskripsi, oleh: x.pelapor, at: x.createdAt, states: ['Diproses', 'Selesai'] }))
+    ].sort((a, b) => (b.at || '').localeCompare(a.at || ''));
+    const totalMasuk = inbox.length;
+    const stat = (label, val, icon, tone, nav) => `
+      <button class="stat" data-tone="${tone}" data-nav="${nav}"><div class="stat-ic">${icon}</div>
+      <div><div class="stat-val">${val}</div><div class="stat-lbl">${label}</div></div></button>`;
+    const inboxCards = inbox.length ? inbox.map((m) => `
+      <div class="card"><div class="card-body">
+        <div class="row-between"><strong><span class="inline-ic">${ic(m.icon)}</span> ${esc(m.judul)}</strong><span class="chip">${esc(m.t)}</span></div>
+        ${m.sub ? `<p class="muted">${esc(m.sub)}</p>` : ''}
+        <small class="muted">Dari ${esc(m.oleh || '-')} • ${tgl(m.at)}</small>
+        ${statusButtons(m.coll, m.id, m.states)}
+      </div></div>`).join('') : `<div class="callout green"><div>✅</div><div>Tidak ada pengajuan yang menunggu. Semua sudah ditangani.</div></div>`;
+    return `
+      <div class="hero-card"><div class="hero-greet">
+        <div><span class="hero-hi">${sapa},</span><strong class="hero-name">${esc(user.nama)} 🛡️</strong>
+        <div class="hero-loc">📍 ${esc(CFG.WILAYAH.nama)}${user.jabatan ? ' • ' + esc(user.jabatan) : ''}</div></div>
+        <span class="hero-role">🛡️ Pengurus</span>
+      </div></div>
+      <div class="section-title">Perlu Ditindak</div>
+      <div class="stat-grid">
+        ${stat('Surat menunggu', suratPending.length, ic('mail'), 'blue', 'surat')}
+        ${stat('Laporan baru', laporBaru.length, ic('clipboard'), 'orange', 'lapor')}
+        ${stat('Bantuan baru', banBaru.length, ic('lifebuoy'), 'red', 'bantuan')}
+        ${stat('Total warga', war.length, ic('users'), 'green', 'warga')}
+      </div>
+      <div class="section-title">📥 Kotak Masuk Pengajuan ${totalMasuk ? `<span class="chip">${totalMasuk}</span>` : ''}</div>
+      <p class="muted" style="margin:-4px 0 10px">Pengajuan dari warga masuk ke sini. Setujui, proses, atau selesaikan langsung di bawah.</p>
+      ${inboxCards}
+      <div class="section-title">Kelola Layanan</div>
+      <div class="quick-grid">
+        <button class="quick" data-nav="surat"><span class="q-ic">${ic('mail')}</span><span>Layanan Surat</span></button>
+        <button class="quick" data-nav="lapor"><span class="q-ic">${ic('clipboard')}</span><span>Laporan</span></button>
+        <button class="quick" data-nav="bantuan"><span class="q-ic">${ic('lifebuoy')}</span><span>Bantuan</span></button>
+        <button class="quick" data-nav="pengumuman"><span class="q-ic">${ic('megaphone')}</span><span>Pengumuman</span></button>
+        <button class="quick" data-nav="warga"><span class="q-ic">${ic('users')}</span><span>Data Warga</span></button>
+        <button class="quick" data-nav="cariwarga"><span class="q-ic">${ic('search')}</span><span>Cari Warga</span></button>
+        <button class="quick" data-nav="statistik"><span class="q-ic">${ic('pie')}</span><span>Statistik</span></button>
+        <button class="quick" data-nav="jadwal"><span class="q-ic">${ic('calendar')}</span><span>Jadwal & Ronda</span></button>
+      </div>`;
+  },
+
   // ---------- MENU (semua modul) ----------
   async menu(user) {
     const ids = user.role === 'pengurus' ? MENU_ITEMS.concat(['cariwarga', 'statistik']) : MENU_ITEMS;
@@ -249,7 +306,8 @@ const Views = {
   async lapor(user) {
     const role = user.role; const rows = await DB.list('laporan');
     const kategori = ['Fasilitas Umum', 'Kebersihan', 'Keamanan', 'Jalan Rusak', 'Banjir', 'Lainnya'];
-    const form = `
+    const note = role !== 'pengurus' ? `<div class="callout blue"><div>📨</div><div>Laporanmu otomatis diteruskan ke pengurus RT/RW untuk ditindaklanjuti. Pantau statusnya di sini.</div></div>` : '';
+    const form = role !== 'pengurus' ? `
       <form id="f-lapor" class="form card"><div class="card-body">
         <h3>Buat Laporan Baru</h3>
         <label>Judul masalah<input name="judul" required placeholder="cth: Jalan berlubang di gang 2"></label>
@@ -257,7 +315,7 @@ const Views = {
         <label>Lokasi<input name="lokasi" placeholder="cth: RT 01 dekat masjid"></label>
         <label>Deskripsi<textarea name="deskripsi" rows="3" required placeholder="Jelaskan detail masalahnya..."></textarea></label>
         <button class="btn primary" type="submit">Kirim Laporan</button>
-      </div></form>`;
+      </div></form>` : '';
     const cards = rows.map((r) => `
       <div class="card" data-status="${esc(r.status)}" data-text="${esc((r.judul || '') + ' ' + (r.kategori || '') + ' ' + (r.lokasi || '') + ' ' + (r.deskripsi || '') + ' ' + (r.pelapor || ''))}"><div class="card-body">
         <div class="row-between"><strong>${esc(r.judul)}</strong>${badge(r.status)}</div>
@@ -266,23 +324,24 @@ const Views = {
         <small class="muted">Oleh ${esc(r.pelapor)} • ${tgl(r.createdAt)}</small>
         ${role === 'pengurus' ? statusButtons('laporan', r.id, ['Baru', 'Diproses', 'Selesai']) : ''}
       </div></div>`).join('');
-    const list = rows.length ? wrapList(cards, ['Baru', 'Diproses', 'Selesai']) : emptyState('Belum ada laporan. Jadilah yang pertama melapor.', 'clipboard');
-    return form + `<div class="section-title">Daftar Laporan</div>` + list;
+    const list = rows.length ? wrapList(cards, ['Baru', 'Diproses', 'Selesai']) : emptyState(role === 'pengurus' ? 'Belum ada laporan masuk.' : 'Belum ada laporan. Jadilah yang pertama melapor.', 'clipboard');
+    return note + form + `<div class="section-title">${role === 'pengurus' ? 'Kelola Laporan Warga' : 'Daftar Laporan'}</div>` + list;
   },
 
   // ---------- MINTA BANTUAN ----------
   async bantuan(user) {
     const role = user.role; const rows = await DB.list('bantuan');
     const jenis = ['Darurat / Medis', 'Keamanan', 'Kesehatan', 'Sosial', 'Bencana', 'Lainnya'];
-    const form = `
+    const form = role !== 'pengurus' ? `
       <div class="callout red"><div>🚨</div><div><strong>Darurat?</strong> Hubungi <a href="tel:${esc(CFG.WILAYAH.kontakDarurat)}">${esc(CFG.WILAYAH.kontakDarurat)}</a> atau ketua RT setempat.</div></div>
+      <div class="callout blue"><div>📨</div><div>Permintaan bantuanmu diteruskan ke pengurus RT/RW.</div></div>
       <form id="f-bantuan" class="form card"><div class="card-body">
         <h3>Permintaan Bantuan</h3>
         <label>Jenis bantuan<select name="jenis">${jenis.map((k) => `<option>${k}</option>`).join('')}</select></label>
         <label>Tingkat urgensi<select name="urgensi"><option>Rendah</option><option selected>Sedang</option><option>Tinggi</option></select></label>
         <label>Deskripsi<textarea name="deskripsi" rows="3" required placeholder="Jelaskan bantuan yang dibutuhkan..."></textarea></label>
         <button class="btn primary" type="submit">Kirim Permintaan</button>
-      </div></form>`;
+      </div></form>` : '';
     const cards = rows.map((r) => `
       <div class="card" data-status="${esc(r.status)}" data-text="${esc((r.jenis || '') + ' ' + (r.deskripsi || '') + ' ' + (r.pemohon || '') + ' ' + (r.urgensi || ''))}"><div class="card-body">
         <div class="row-between"><strong>${esc(r.jenis)}</strong>${badge(r.status)}</div>
@@ -291,8 +350,8 @@ const Views = {
         <small class="muted">Oleh ${esc(r.pemohon)} • ${tgl(r.createdAt)}</small>
         ${role === 'pengurus' ? statusButtons('bantuan', r.id, ['Baru', 'Diproses', 'Selesai']) : ''}
       </div></div>`).join('');
-    const list = rows.length ? wrapList(cards, ['Baru', 'Diproses', 'Selesai']) : emptyState('Belum ada permintaan bantuan.', 'lifebuoy');
-    return form + `<div class="section-title">Daftar Permintaan</div>` + list;
+    const list = rows.length ? wrapList(cards, ['Baru', 'Diproses', 'Selesai']) : emptyState(role === 'pengurus' ? 'Belum ada permintaan bantuan masuk.' : 'Belum ada permintaan bantuan.', 'lifebuoy');
+    return form + `<div class="section-title">${role === 'pengurus' ? 'Kelola Permintaan Bantuan' : 'Daftar Permintaan'}</div>` + list;
   },
 
   // ---------- PENGUMUMAN ----------
@@ -379,20 +438,21 @@ const Views = {
       'Surat Pengantar SKCK', 'Surat Pindah Domisili', 'Surat Keterangan Kelahiran',
       'Surat Keterangan Kematian', 'Surat Keterangan Belum Menikah', 'Lainnya'
     ];
-    const form = `
+    const note = role !== 'pengurus' ? `<div class="callout blue"><div>📨</div><div>Pengajuanmu otomatis diteruskan ke pengurus RT/RW untuk diproses. Pantau statusnya di bawah.</div></div>` : '';
+    const form = role !== 'pengurus' ? `
       <form id="f-surat" class="form card"><div class="card-body">
         <h3>Ajukan Surat / Layanan</h3>
         <label>Jenis layanan<select name="jenis">${jenis.map((k) => `<option>${k}</option>`).join('')}</select></label>
         <label>Keperluan<textarea name="keperluan" rows="2" required placeholder="cth: untuk pendaftaran sekolah anak"></textarea></label>
         <button class="btn primary" type="submit">Kirim Pengajuan</button>
-      </div></form>`;
+      </div></form>` : '';
     const cards = rows.map((r) => `
       <div class="card" data-status="${esc(r.status)}" data-text="${esc((r.jenis || '') + ' ' + (r.keperluan || '') + ' ' + (r.pemohon || ''))}"><div class="card-body"><div class="row-between"><strong>${esc(r.jenis)}</strong>${badge(r.status)}</div>
       <p class="muted">${esc(r.keperluan)}</p><small class="muted">Oleh ${esc(r.pemohon)} • ${tgl(r.createdAt)}</small>
       ${role === 'pengurus' ? statusButtons('surat', r.id, ['Menunggu', 'Disetujui', 'Ditolak', 'Selesai']) : ''}
       </div></div>`).join('');
-    const list = rows.length ? wrapList(cards, ['Menunggu', 'Disetujui', 'Ditolak', 'Selesai']) : emptyState('Belum ada pengajuan surat.', 'mail');
-    return form + `<div class="section-title">Riwayat Pengajuan</div>` + list;
+    const list = rows.length ? wrapList(cards, ['Menunggu', 'Disetujui', 'Ditolak', 'Selesai']) : emptyState(role === 'pengurus' ? 'Belum ada pengajuan surat masuk.' : 'Belum ada pengajuan surat.', 'mail');
+    return note + form + `<div class="section-title">${role === 'pengurus' ? 'Kelola Pengajuan Surat' : 'Riwayat Pengajuan'}</div>` + list;
   },
 
   // ---------- JADWAL & RONDA ----------
@@ -573,9 +633,12 @@ async function render(view) {
   view = view || localStorage.getItem('siwarga:lastView') || 'beranda';
   if (!VIEWS[view]) view = 'beranda';
   localStorage.setItem('siwarga:lastView', view);
+  const tabs = user.role === 'pengurus' ? TABS_PENGURUS : TABS_WARGA;
+  const tabLabel = (t) => (t === 'beranda' && user.role === 'pengurus') ? 'Dashboard' : VIEWS[t].label;
+  const headTitle = (view === 'beranda' && user.role === 'pengurus') ? 'Dashboard Pengurus' : VIEWS[view].label;
   $('#app').innerHTML = `
     <header class="topbar">
-      <div><div class="tb-title">${ic(VIEWS[view].icon)} ${esc(VIEWS[view].label)}</div>
+      <div><div class="tb-title">${ic(VIEWS[view].icon)} ${esc(headTitle)}</div>
       <div class="tb-sub">${esc(CFG.WILAYAH.nama)}</div></div>
       <div class="topbar-actions">
         <button class="icon-btn" data-theme-toggle title="Ganti tema">${ic(Theme.get() === 'dark' ? 'sun' : 'moon')}</button>
@@ -583,7 +646,7 @@ async function render(view) {
       </div>
     </header>
     <main class="content" id="content">${skeleton()}</main>
-    <nav class="tabbar">${TABS.map((t) => `<button class="tab ${t === view ? 'active' : ''}" data-nav="${t}">${ic(VIEWS[t].icon)}<span>${VIEWS[t].label}</span></button>`).join('')}</nav>`;
+    <nav class="tabbar">${tabs.map((t) => `<button class="tab ${t === view ? 'active' : ''}" data-nav="${t}">${ic(VIEWS[t].icon)}<span>${esc(tabLabel(t))}</span></button>`).join('')}</nav>`;
   try {
     $('#content').innerHTML = await Views[view](user);
     if ($('.toolbar[data-rq]')) applyListFilter();
@@ -686,7 +749,7 @@ document.addEventListener('submit', async (e) => {
   if (map[f.id]) {
     e.preventDefault();
     await map[f.id](formData(f));
-    toast('Berhasil disimpan ✅');
+    toast(f.id === 'f-surat' || f.id === 'f-lapor' || f.id === 'f-bantuan' ? 'Terkirim ke pengurus ✅' : 'Berhasil disimpan ✅');
     render(localStorage.getItem('siwarga:lastView'));
   }
 });

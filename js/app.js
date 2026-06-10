@@ -117,6 +117,14 @@ function applyListFilter() {
   const q = (inp ? inp.value : '').trim().toLowerCase();
   const active = $('.fchip.active', tb);
   const st = active ? active.dataset.fstatus : '';
+  if (tb.hasAttribute('data-rq') && !q) {
+    $$('.card', list).forEach((c) => { c.style.display = 'none'; });
+    const none0 = $('.list-none', list); if (none0) none0.remove();
+    let pr = $('.list-prompt', list);
+    if (!pr) { pr = document.createElement('div'); pr.className = 'empty list-prompt'; pr.innerHTML = `<span class="empty-ic">${ic('search')}</span><p>Ketik NIK atau nama warga untuk menampilkan datanya.</p>`; list.appendChild(pr); }
+    return;
+  }
+  const pr0 = $('.list-prompt', list); if (pr0) pr0.remove();
   let shown = 0;
   $$('.card', list).forEach((c) => {
     const text = (c.dataset.text || '').toLowerCase();
@@ -171,6 +179,7 @@ const VIEWS = {
   kontak: { label: 'Kontak Penting', icon: 'phone' },
   polling: { label: 'Polling Warga', icon: 'chart' },
   statistik: { label: 'Statistik', icon: 'pie' },
+  cariwarga: { label: 'Cari Warga', icon: 'search' },
   notifikasi: { label: 'Notifikasi', icon: 'bell' },
   menu: { label: 'Menu', icon: 'menu' }
 };
@@ -222,7 +231,7 @@ const Views = {
 
   // ---------- MENU (semua modul) ----------
   async menu(user) {
-    const ids = user.role === 'pengurus' ? MENU_ITEMS.concat(['statistik']) : MENU_ITEMS;
+    const ids = user.role === 'pengurus' ? MENU_ITEMS.concat(['cariwarga', 'statistik']) : MENU_ITEMS;
     const items = ids.map((id) => `
       <button class="quick" data-nav="${id}"><span class="q-ic">${ic(VIEWS[id].icon)}</span><span>${VIEWS[id].label}</span></button>`).join('');
     return `<div class="section-title">Semua Layanan</div><div class="quick-grid">${items}</div>
@@ -338,6 +347,25 @@ const Views = {
       </div></div>`).join('');
     const list = rows.length ? wrapList(cards) : emptyState('Belum ada data warga.', 'users');
     return head + form + `<div class="section-title">Daftar Warga</div>` + list;
+  },
+
+  // ---------- CARI WARGA (khusus pengurus/RT) ----------
+  async cariwarga(user) {
+    if (user.role !== 'pengurus') return `<div class="callout blue"><div>ℹ️</div><div>Pencarian data warga hanya untuk pengurus RT/RW.</div></div>`;
+    const rows = await DB.list('warga');
+    if (!rows.length) return `<div class="callout blue"><div>🔍</div><div>Belum ada data warga. Tambahkan dulu lewat menu Data Warga.</div></div>`;
+    const cards = rows.map((r) => `
+      <div class="card" data-text="${esc((r.nama || '') + ' ' + (r.nik || '') + ' ' + (r.kk || '') + ' ' + (r.alamat || '') + ' RT' + (r.rt || '') + ' RW' + (r.rw || '') + ' ' + (r.status || '') + ' ' + (r.telp || ''))}"><div class="card-body">
+        <div class="row-between"><strong>${esc(r.nama)}</strong><span class="chip">RT ${esc(r.rt)}/RW ${esc(r.rw)}</span></div>
+        <div class="kv"><span>NIK</span><b>${esc(r.nik || '-')}</b></div>
+        <div class="kv"><span>No. KK</span><b>${esc(r.kk || '-')}</b></div>
+        <div class="kv"><span>Alamat</span><b>${esc(r.alamat || '-')}</b></div>
+        <div class="kv"><span>Status</span><b>${esc(r.status || '-')}</b></div>
+        <div class="kv"><span>Anggota</span><b>${esc(r.jmlAnggota || '-')} jiwa</b></div>
+        ${r.telp ? `<div class="chips"><a class="chip link" href="tel:${esc(r.telp)}">📞 ${esc(r.telp)}</a></div>` : ''}
+      </div></div>`).join('');
+    const tb = `<div class="toolbar" data-rq><div class="search-wrap">${ic('search')}<input class="search-input" type="search" placeholder="Ketik NIK atau nama warga..." aria-label="Cari warga"></div></div>`;
+    return `<div class="callout blue"><div>🔍</div><div>Cari warga berdasarkan <strong>NIK</strong> atau <strong>nama</strong> — data lengkap langsung muncul.</div></div>${tb}<div class="list">${cards}</div>`;
   },
 
   // ---------- LAYANAN SURAT ----------
@@ -551,6 +579,7 @@ async function render(view) {
     <nav class="tabbar">${TABS.map((t) => `<button class="tab ${t === view ? 'active' : ''}" data-nav="${t}">${ic(VIEWS[t].icon)}<span>${VIEWS[t].label}</span></button>`).join('')}</nav>`;
   try {
     $('#content').innerHTML = await Views[view](user);
+    if ($('.toolbar[data-rq]')) applyListFilter();
   } catch (err) {
     console.error(err);
     $('#content').innerHTML = emptyState('Gagal memuat halaman. Coba lagi.', 'bell');

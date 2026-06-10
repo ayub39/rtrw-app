@@ -1,5 +1,5 @@
 // Service Worker - SiWarga PWA
-const CACHE = 'siwarga-v7';
+const CACHE = 'siwarga-v8';
 const ASSETS = [
   './',
   './index.html',

@@ -1,5 +1,5 @@
 // ============================================================
-//  KONFIGURASI BACKEND, AKSES & DAFTAR PENGURUS
+//  KONFIGURASI APLIKASI, BACKEND, & DAFTAR PENGURUS
 // ============================================================
 //  Default: penyimpanan LOKAL (localStorage) -> langsung jalan tanpa setup.
 //
@@ -11,6 +11,10 @@
 // ============================================================
 
 window.APP_CONFIG = {
+  // Nama aplikasi. Ganti ke 'LaporPakRW' kalau dipakai untuk tingkat RW,
+  // atau biarkan 'LaporPakRT' untuk tingkat RT. Bebas disesuaikan kebutuhan.
+  APP_NAME: 'LaporPakRT',
+
   BACKEND: 'local', // 'local' | 'supabase'
   SUPABASE_URL: 'https://YOUR-PROJECT.supabase.co',
   SUPABASE_ANON_KEY: 'YOUR-ANON-KEY',
@@ -18,17 +22,18 @@ window.APP_CONFIG = {
   // ----------------------------------------------------------
   //  DAFTAR PENGURUS / RT / RW  (INPUT MANUAL OLEH ADMIN)
   // ----------------------------------------------------------
-  //  Warga mendaftar sendiri lewat aplikasi.
-  //  Pengurus TIDAK bisa daftar sendiri - akun pengurus harus dimasukkan
-  //  manual di sini (mode lokal) ATAU di tabel `pengurus` pada database
-  //  Supabase (mode online). Pengurus login memakai NIK + email yang
-  //  cocok dengan salah satu data di bawah ini.
+  //  Warga mendaftar sendiri lewat aplikasi (NIK + email + password),
+  //  lalu login memakai email + password.
+  //
+  //  Pengurus TIDAK bisa daftar sendiri - akun pengurus diinput manual
+  //  di sini (mode lokal) ATAU di tabel `pengurus` pada Supabase (mode
+  //  online). Pengurus login memakai email + password di bawah ini.
   //
   //  Tambahkan tiap pengurus sebagai satu objek:
-  //    { nama, nik (16 digit), email, jabatan }
+  //    { nama, nik (16 digit), email, pass (password login), jabatan }
   PENGURUS: [
-    { nama: 'Admin RW 05', nik: '3201000000000001', email: 'admin@rw05.id', jabatan: 'Ketua RW' },
-    { nama: 'Ketua RT 01', nik: '3201000000000002', email: 'rt01@rw05.id', jabatan: 'Ketua RT 01' }
+    { nama: 'Admin RW 05', nik: '3201000000000001', email: 'admin@rw05.id', pass: 'admin123', jabatan: 'Ketua RW' },
+    { nama: 'Ketua RT 01', nik: '3201000000000002', email: 'rt01@rw05.id', pass: 'rt01pass', jabatan: 'Ketua RT 01' }
   ],
 
   // Identitas wilayah (boleh diubah pengurus)

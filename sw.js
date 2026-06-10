@@ -1,5 +1,5 @@
 // Service Worker - SiWarga PWA
-const CACHE = 'siwarga-v9';
+const CACHE = 'siwarga-v10';
 const ASSETS = [
   './',
   './index.html',
@@ -61,7 +61,7 @@ self.addEventListener('fetch', (e) => {
 self.addEventListener('push', (e) => {
   let data = {};
   try { data = e.data ? e.data.json() : {}; } catch (err) { data = { body: e.data ? e.data.text() : '' }; }
-  const title = data.title || 'SiWarga';
+  const title = data.title || 'LaporPakRT';
   const opts = {
     body: data.body || 'Ada pembaruan baru di lingkungan Anda.',
     icon: './icons/icon.svg',

@@ -1,7 +1,8 @@
 // ============================================================
-//  SiWarga - Aplikasi Layanan RT/RW (PWA)
+//  LaporPakRT / LaporPakRW - Aplikasi Layanan RT/RW (PWA)
 // ============================================================
 const CFG = window.APP_CONFIG;
+try { document.title = (CFG.APP_NAME || 'Aplikasi') + ' — Layanan RT/RW'; } catch (e) {}
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -44,7 +45,7 @@ const Notif = {
   async enable() {
     if (!this.supported()) { toast('Browser tidak mendukung notifikasi'); return false; }
     const p = await Notification.requestPermission();
-    if (p === 'granted') { toast('Notifikasi diaktifkan ✅'); this.show('SiWarga', 'Notifikasi berhasil diaktifkan.'); return true; }
+    if (p === 'granted') { toast('Notifikasi diaktifkan ✅'); this.show(CFG.APP_NAME, 'Notifikasi berhasil diaktifkan.'); return true; }
     toast('Izin notifikasi ditolak'); return false;
   },
   show(title, body) {
@@ -593,56 +594,77 @@ async function render(view) {
 }
 
 function renderLogin(mode) {
-  mode = mode || 'warga';
-  const isPeng = mode === 'pengurus';
+  mode = mode || 'login';
+  const isReg = mode === 'register';
   $('#app').innerHTML = `
     <div class="login">
       <div class="login-card">
         <div class="login-logo">🏘️</div>
-        <h1>SiWarga</h1>
+        <h1>${esc(CFG.APP_NAME || 'Aplikasi')}</h1>
         <p class="muted">Layanan digital RT/RW — ${esc(CFG.WILAYAH.nama)}</p>
-        <div style="display:flex;gap:8px;margin-bottom:14px">
-          <button type="button" class="btn ${isPeng ? 'ghost' : 'primary'} block" data-mode="warga">👤 Warga</button>
-          <button type="button" class="btn ${isPeng ? 'primary' : 'ghost'} block" data-mode="pengurus">🛡️ Pengurus</button>
-        </div>
-        ${isPeng ? `
-        <form id="f-login" class="form">
-          <div class="callout blue"><div>🛡️</div><div>Akun pengurus harus sudah didaftarkan admin di database. Masuk dengan NIK & email yang terdaftar.</div></div>
-          <label>NIK terdaftar<input name="nik" inputmode="numeric" maxlength="16" required placeholder="16 digit NIK"></label>
-          <label>Email terdaftar<input name="email" type="email" required placeholder="email@contoh.com"></label>
-          <button class="btn primary block" type="submit">Masuk sebagai Pengurus</button>
-        </form>
-        <small class="muted">Belum terdaftar? Hubungi admin RW/RT agar dimasukkan ke database.</small>
-        ` : `
-        <form id="f-login" class="form">
+        ${isReg ? `
+        <form id="f-register" class="form">
           <label>Nama lengkap<input name="nama" required placeholder="Nama sesuai KTP"></label>
           <label>NIK (16 digit)<input name="nik" inputmode="numeric" maxlength="16" required placeholder="contoh: 3201xxxxxxxxxxxx"></label>
           <label>Email<input name="email" type="email" required placeholder="email@contoh.com"></label>
-          <button class="btn primary block" type="submit">Daftar / Masuk</button>
+          <label>Password<input name="pass" type="password" required minlength="6" placeholder="minimal 6 karakter"></label>
+          <button class="btn primary block" type="submit">Daftar sebagai Warga</button>
         </form>
-        <small class="muted">Pendaftaran mandiri hanya untuk warga.</small>
+        <small class="muted">Sudah punya akun? <a href="#" data-mode="login">Masuk di sini</a></small>
+        ` : `
+        <form id="f-login" class="form">
+          <label>Email<input name="email" type="email" required placeholder="email@contoh.com"></label>
+          <label>Password<input name="pass" type="password" required placeholder="password"></label>
+          <button class="btn primary block" type="submit">Masuk</button>
+        </form>
+        <small class="muted">Belum punya akun? <a href="#" data-mode="register">Daftar sebagai warga</a><br>Akun pengurus/RT/RW dibuat manual oleh admin di database.</small>
         `}
       </div>
     </div>`;
-  document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', () => renderLogin(b.dataset.mode)));
-  $('#f-login').addEventListener('submit', async (e) => {
+  document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', (ev) => { ev.preventDefault(); renderLogin(b.dataset.mode); }));
+
+  const reg = $('#f-register');
+  if (reg) reg.addEventListener('submit', async (e) => {
     e.preventDefault();
     const d = formData(e.target);
+    if (!d.nama) { toast('Nama wajib diisi'); return; }
     if (!/^\d{16}$/.test(d.nik || '')) { toast('NIK harus 16 digit angka'); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email || '')) { toast('Format email tidak valid'); return; }
-    if (isPeng) {
-      const list = await getPengurusList();
-      const match = list.find((p) => String(p.nik || '') === d.nik && (!p.email || String(p.email).toLowerCase() === d.email.toLowerCase()));
-      if (!match) { toast('Akun pengurus tidak terdaftar. Hubungi admin RW/RT.'); return; }
-      Session.set({ nama: match.nama || 'Pengurus', nik: d.nik, email: match.email || d.email, role: 'pengurus', jabatan: match.jabatan || '' });
-      toast('Selamat datang, ' + (match.nama || 'Pengurus'));
+    if (!d.pass || d.pass.length < 6) { toast('Password minimal 6 karakter'); return; }
+    const email = d.email.toLowerCase();
+    const pengList = await getPengurusList();
+    if (pengList.some((p) => String(p.email || '').toLowerCase() === email)) { toast('Email ini milik akun pengurus, silakan login.'); return; }
+    const wargaList = await DB.list('warga');
+    if (wargaList.some((w) => String(w.email || '').toLowerCase() === email)) { toast('Email sudah terdaftar, silakan login.'); return; }
+    await DB.add('warga', { nama: d.nama, nik: d.nik, email: d.email, pass: d.pass, status: 'Tetap', jmlAnggota: 1 });
+    toast('Pendaftaran berhasil ✅ Silakan login.');
+    renderLogin('login');
+  });
+
+  const log = $('#f-login');
+  if (log) log.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const d = formData(e.target);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email || '')) { toast('Format email tidak valid'); return; }
+    if (!d.pass) { toast('Password wajib diisi'); return; }
+    const email = d.email.toLowerCase();
+    const pengList = await getPengurusList();
+    const peng = pengList.find((p) => String(p.email || '').toLowerCase() === email && String(p.pass || '') === d.pass);
+    if (peng) {
+      Session.set({ nama: peng.nama || 'Pengurus', nik: peng.nik || '', email: peng.email || d.email, role: 'pengurus', jabatan: peng.jabatan || '' });
+      toast('Selamat datang, ' + (peng.nama || 'Pengurus'));
       render('beranda');
       return;
     }
-    if (!d.nama) { toast('Nama wajib diisi'); return; }
-    Session.set({ nama: d.nama, nik: d.nik, email: d.email, role: 'warga' });
-    toast('Selamat datang, ' + d.nama);
-    render('beranda');
+    const wargaList = await DB.list('warga');
+    const warga = wargaList.find((w) => String(w.email || '').toLowerCase() === email && String(w.pass || '') === d.pass);
+    if (warga) {
+      Session.set({ nama: warga.nama, nik: warga.nik || '', email: warga.email, role: 'warga' });
+      toast('Selamat datang, ' + warga.nama);
+      render('beranda');
+      return;
+    }
+    toast('Email atau password salah.');
   });
 }
 
@@ -689,7 +711,7 @@ document.addEventListener('click', async (e) => {
     const parts = setb.dataset.set.split(':'); const coll = parts[0], id = parts[1], status = parts[2];
     await DB.update(coll, id, { status });
     toast('Status: ' + status);
-    Notif.show('SiWarga', 'Status diperbarui menjadi ' + status + '.');
+    Notif.show(CFG.APP_NAME, 'Status diperbarui menjadi ' + status + '.');
     render(localStorage.getItem('siwarga:lastView'));
     return;
   }

@@ -1,9 +1,10 @@
 // Service Worker - SiWarga PWA
-const CACHE = 'siwarga-v6';
+const CACHE = 'siwarga-v7';
 const ASSETS = [
   './',
   './index.html',
   './styles.css',
+  './styles.extra.css',
   './js/db.js',
   './js/app.js',
   './js/config.js',
@@ -27,12 +28,10 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  // Network-first for Supabase / API calls
   if (url.origin !== self.location.origin) {
     e.respondWith(fetch(req).catch(() => caches.match(req)));
     return;
   }
-  // Network-first for app shell (HTML/CSS/JS) supaya update cepat keambil
   if (req.destination === 'document' || req.destination === 'script' || req.destination === 'style' || url.pathname.endsWith('.js') || url.pathname.endsWith('.css') || url.pathname.endsWith('.html') || url.pathname.endsWith('/')) {
     e.respondWith(
       fetch(req).then((res) => {
@@ -43,7 +42,6 @@ self.addEventListener('fetch', (e) => {
     );
     return;
   }
-  // Cache-first untuk aset lain (icon, dll)
   e.respondWith(
     caches.match(req).then((cached) => {
       if (cached) return cached;
@@ -52,6 +50,31 @@ self.addEventListener('fetch', (e) => {
         caches.open(CACHE).then((c) => c.put(req, copy));
         return res;
       }).catch(() => caches.match('./index.html'));
+    })
+  );
+});
+
+// ---------- WEB PUSH (siap dipakai jika ada server pengirim) ----------
+self.addEventListener('push', (e) => {
+  let data = {};
+  try { data = e.data ? e.data.json() : {}; } catch (err) { data = { body: e.data ? e.data.text() : '' }; }
+  const title = data.title || 'SiWarga';
+  const opts = {
+    body: data.body || 'Ada pembaruan baru di lingkungan Anda.',
+    icon: './icons/icon.svg',
+    badge: './icons/icon.svg',
+    data: { url: data.url || './' }
+  };
+  e.waitUntil(self.registration.showNotification(title, opts));
+});
+
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const target = (e.notification.data && e.notification.data.url) || './';
+  e.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const c of list) { if ('focus' in c) return c.focus(); }
+      if (self.clients.openWindow) return self.clients.openWindow(target);
     })
   );
 });

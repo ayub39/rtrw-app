@@ -1,0 +1,92 @@
+/* ============================================================
+   SiWarga - Gaya tambahan (dimuat SETELAH styles.css)
+   Dark mode, skeleton, toolbar cari/filter, modal, statistik.
+   ============================================================ */
+
+/* ---------- DARK MODE ---------- */
+:root[data-theme=dark]{
+  --bg:#0b1220;
+  --card:#131c2e;
+  --ink:#e7ecf3;
+  --muted:#93a1b5;
+  --line:#243149;
+  --green-l:#16233a;
+  --shadow:0 1px 3px rgba(0,0,0,.45),0 8px 28px rgba(0,0,0,.4);
+}
+:root[data-theme=dark] body{background:var(--bg);color:var(--ink)}
+:root[data-theme=dark] .card,
+:root[data-theme=dark] .stat,
+:root[data-theme=dark] .quick,
+:root[data-theme=dark] .login-card,
+:root[data-theme=dark] .skel-card,
+:root[data-theme=dark] .empty,
+:root[data-theme=dark] .search-wrap,
+:root[data-theme=dark] .fchip,
+:root[data-theme=dark] .poll-opt,
+:root[data-theme=dark] .modal{background:var(--card);color:var(--ink)}
+:root[data-theme=dark] .tabbar{background:var(--card);border-top-color:var(--line)}
+:root[data-theme=dark] input,
+:root[data-theme=dark] select,
+:root[data-theme=dark] textarea{background:#0f1830;color:var(--ink);border-color:var(--line)}
+:root[data-theme=dark] .muted,
+:root[data-theme=dark] .tb-sub{color:var(--muted)}
+:root[data-theme=dark] .chip{background:#0f1830;color:var(--muted)}
+
+/* ---------- TOPBAR ACTIONS / TOGGLE TEMA ---------- */
+.topbar-actions{display:flex;align-items:center;gap:8px}
+.icon-btn{width:40px;height:40px;border-radius:50%;border:2px solid rgba(255,255,255,.35);background:rgba(255,255,255,.16);color:#fff;display:grid;place-items:center;cursor:pointer;padding:0}
+.icon-btn .ic{width:20px;height:20px}
+
+/* ---------- EMPTY STATE (hidup) ---------- */
+.empty-ic{display:inline-flex;color:var(--muted);opacity:.7;margin-bottom:8px}
+.empty-ic .ic{width:38px;height:38px;stroke-width:1.6}
+.empty p{margin:0}
+
+/* ---------- SKELETON ---------- */
+.skel-wrap{display:flex;flex-direction:column;gap:12px}
+.skel-card{background:#fff;border-radius:var(--radius,16px);box-shadow:var(--shadow);padding:16px;display:flex;flex-direction:column;gap:10px}
+.skel-line{height:12px;border-radius:6px;background:linear-gradient(90deg,#e9eef3 25%,#f5f8fb 37%,#e9eef3 63%);background-size:400% 100%;animation:skel 1.4s ease infinite}
+:root[data-theme=dark] .skel-line{background:linear-gradient(90deg,#1b2740 25%,#26344f 37%,#1b2740 63%);background-size:400% 100%}
+.skel-line.w95{width:95%}.skel-line.w70{width:70%}.skel-line.w45{width:45%}
+@keyframes skel{0%{background-position:100% 0}100%{background-position:-100% 0}}
+
+/* ---------- TOOLBAR: PENCARIAN + FILTER ---------- */
+.toolbar{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
+.search-wrap{display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:0 12px}
+.search-wrap .ic{width:18px;height:18px;color:var(--muted);flex:0 0 auto}
+.search-input{flex:1;border:none;background:transparent;padding:11px 0;font-size:14px;font-family:inherit;color:inherit}
+.search-input:focus{outline:none}
+.filter-chips{display:flex;flex-wrap:wrap;gap:7px}
+.fchip{border:1.5px solid var(--line);background:#fff;color:var(--muted);padding:6px 13px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit}
+.fchip.active{background:var(--green);border-color:var(--green);color:#fff}
+
+/* ---------- MODAL KONFIRMASI ---------- */
+.modal-overlay{position:fixed;inset:0;background:rgba(8,15,30,.5);display:flex;align-items:center;justify-content:center;padding:24px;z-index:200;opacity:0;transition:opacity .2s}
+.modal-overlay.show{opacity:1}
+.modal{background:#fff;color:var(--ink);border-radius:18px;max-width:340px;width:100%;padding:22px;box-shadow:var(--shadow);transform:translateY(12px) scale(.97);transition:transform .2s}
+.modal-overlay.show .modal{transform:none}
+.modal-body{font-size:15px;line-height:1.5;margin-bottom:18px}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end}
+.btn.danger{background:#dc2626;color:#fff;border-color:#dc2626}
+
+/* ---------- STATISTIK (bar charts) ---------- */
+.bar-row{display:flex;align-items:center;gap:10px;margin:9px 0;font-size:13px}
+.bar-lbl{flex:0 0 40%;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-track{flex:1;height:10px;background:var(--green-l);border-radius:6px;overflow:hidden}
+.bar-fill{height:100%;background:var(--green);border-radius:6px;transition:width .6s ease}
+.bar-fill.tone-red{background:#dc2626}
+.bar-fill.tone-orange{background:#d97706}
+.bar-fill.tone-green{background:#16a34a}
+.bar-val{flex:0 0 auto;font-weight:700;min-width:22px;text-align:right}
+.card-body h3{font-size:15px;margin:0 0 12px}
+
+/* ---------- MENU PROFIL ---------- */
+.profile-row{display:flex;align-items:center;gap:12px}
+.profile-row > div:nth-child(2){flex:1}
+.profile-row .muted{font-size:12px}
+.avatar.big{width:48px;height:48px;font-size:20px;flex:0 0 auto}
+.pt0{padding-top:0}
+
+/* ---------- UTIL ---------- */
+.hidden{display:none !important}
+.btn.block{width:100%}

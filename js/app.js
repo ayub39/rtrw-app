@@ -103,6 +103,36 @@ function confirmModal(msg, opts) {
   });
 }
 
+// ---------- CSS DINAMIS (modal surat & chat) ----------
+function injectSuratStyles() {
+  if (document.getElementById('surat-modal-css')) return;
+  const st = document.createElement('style');
+  st.id = 'surat-modal-css';
+  st.textContent = `
+    .modal.modal-lg{max-width:520px;width:92%;max-height:88vh;display:flex;flex-direction:column;padding:0;overflow:hidden}
+    .modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line);font-size:16px}
+    .modal-lg .modal-body{padding:16px}
+    .modal-lg .modal-body.scroll{flex:1;overflow:auto}
+    .modal-actions.wrap{flex-wrap:wrap;gap:8px;padding:12px 16px;border-top:1px solid var(--line)}
+    .status-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center;width:100%}
+    .chat-box{background:var(--green-l);border-radius:12px;padding:10px;margin:8px 0;max-height:210px;overflow:auto;display:flex;flex-direction:column;gap:8px}
+    .chat-bubble{padding:8px 10px;border-radius:10px;background:var(--card);border:1px solid var(--line);font-size:14px;max-width:85%}
+    .chat-bubble.me{align-self:flex-end;background:var(--green);color:#fff;border-color:transparent}
+    .chat-bubble.me .cb-meta{color:rgba(255,255,255,.85)}
+    .chat-bubble.them{align-self:flex-start}
+    .cb-meta{font-size:11px;opacity:.75;margin-bottom:2px}
+    .chat-input{display:flex;gap:6px;margin-top:6px}
+    .chat-input input{flex:1;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font-size:14px}
+    .section-title.sm{font-size:13px;margin:12px 0 2px}
+    .btn.mini{padding:6px 12px;font-size:13px}
+    .icon-btn{background:none;border:none;cursor:pointer;font-size:16px;color:var(--muted);line-height:1}
+    .mt{display:block;margin-top:10px;font-size:13px;color:var(--muted)}
+    .mt input{margin-top:4px;width:100%;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font-size:14px}
+    .muted.sm{font-size:12px}
+  `;
+  document.head.appendChild(st);
+}
+
 // ---------- TOOLBAR PENCARIAN + FILTER ----------
 function listToolbar(statuses) {
   const chips = statuses ? `<div class="filter-chips"><button class="fchip active" data-fstatus="">Semua</button>${statuses.map((s) => `<button class="fchip" data-fstatus="${esc(s)}">${esc(s)}</button>`).join('')}</div>` : '';
@@ -256,7 +286,7 @@ const Views = {
         <div class="row-between"><strong><span class="inline-ic">${ic(m.icon)}</span> ${esc(m.judul)}</strong><span class="chip">${esc(m.t)}</span></div>
         ${m.sub ? `<p class="muted">${esc(m.sub)}</p>` : ''}
         <small class="muted">Dari ${esc(m.oleh || '-')} • ${tgl(m.at)}</small>
-        ${statusButtons(m.coll, m.id, m.states)}
+        ${m.coll === 'surat' ? `<div class="actions"><button class="btn primary mini" data-surat="${m.id}">Tinjau & Kelola</button></div>` : statusButtons(m.coll, m.id, m.states)}
       </div></div>`).join('') : `<div class="callout green"><div>✅</div><div>Tidak ada pengajuan yang menunggu. Semua sudah ditangani.</div></div>`;
     return `
       <div class="hero-card"><div class="hero-greet">
@@ -417,7 +447,7 @@ const Views = {
     return `<div class="callout blue"><div>🔍</div><div>Cari warga berdasarkan <strong>NIK</strong> atau <strong>nama</strong> — data lengkap langsung muncul.</div></div>${tb}<div class="list">${cards}</div>`;
   },
 
-  // ---------- LAYANAN SURAT ----------
+  // ---------- LAYANAN SURAT (advanced) ----------
   async surat(user) {
     const role = user.role; const rows = await DB.list('surat');
     const jenis = [
@@ -427,7 +457,7 @@ const Views = {
       'Surat Pengantar SKCK', 'Surat Pindah Domisili', 'Surat Keterangan Kelahiran',
       'Surat Keterangan Kematian', 'Surat Keterangan Belum Menikah', 'Lainnya'
     ];
-    const note = role !== 'pengurus' ? `<div class="callout blue"><div>📨</div><div>Pengajuanmu otomatis diteruskan ke pengurus RT/RW untuk diproses. Pantau statusnya di bawah.</div></div>` : '';
+    const note = role !== 'pengurus' ? `<div class="callout blue"><div>📨</div><div>Pengajuanmu otomatis diteruskan ke pengurus RT/RW untuk diproses. Pantau status & catatan di bawah, dan unduh PDF setelah disetujui.</div></div>` : '';
     const form = role !== 'pengurus' ? `
       <form id="f-surat" class="form card"><div class="card-body">
         <h3>Ajukan Surat / Layanan</h3>
@@ -435,11 +465,18 @@ const Views = {
         <label>Keperluan<textarea name="keperluan" rows="2" required placeholder="cth: untuk pendaftaran sekolah anak"></textarea></label>
         <button class="btn primary" type="submit">Kirim Pengajuan</button>
       </div></form>` : '';
-    const cards = rows.map((r) => `
-      <div class="card" data-status="${esc(r.status)}" data-text="${esc((r.jenis || '') + ' ' + (r.keperluan || '') + ' ' + (r.pemohon || ''))}"><div class="card-body"><div class="row-between"><strong>${esc(r.jenis)}</strong>${badge(r.status)}</div>
-      <p class="muted">${esc(r.keperluan)}</p><small class="muted">Oleh ${esc(r.pemohon)} • ${tgl(r.createdAt)}</small>
-      ${role === 'pengurus' ? statusButtons('surat', r.id, ['Menunggu', 'Disetujui', 'Ditolak', 'Selesai']) : ''}
-      </div></div>`).join('');
+    const cards = rows.map((r) => {
+      const cat = Array.isArray(r.catatan) ? r.catatan : (r.catatan ? [{ text: r.catatan }] : []);
+      const last = cat.length ? cat[cat.length - 1] : null;
+      return `
+      <div class="card" data-status="${esc(r.status)}" data-text="${esc((r.jenis || '') + ' ' + (r.keperluan || '') + ' ' + (r.pemohon || '') + ' ' + (r.pemohonNik || ''))}"><div class="card-body">
+        <div class="row-between"><strong>${esc(r.jenis)}</strong>${badge(r.status)}</div>
+        <p class="muted">${esc(r.keperluan)}</p>
+        <small class="muted">Oleh ${esc(r.pemohon)}${r.pemohonNik ? ` • NIK ${esc(r.pemohonNik)}` : ''} • ${tgl(r.createdAt)}</small>
+        ${last ? `<div class="kv"><span>Catatan</span><b>${esc(last.text)}</b></div>` : ''}
+        <div class="actions"><button class="btn primary mini" data-surat="${r.id}">${role === 'pengurus' ? 'Tinjau & Kelola' : 'Lihat Detail'}</button></div>
+      </div></div>`;
+    }).join('');
     const list = rows.length ? wrapList(cards, ['Menunggu', 'Disetujui', 'Ditolak', 'Selesai']) : emptyState(role === 'pengurus' ? 'Belum ada pengajuan surat masuk.' : 'Belum ada pengajuan surat.', 'mail');
     return note + form + `<div class="section-title">${role === 'pengurus' ? 'Kelola Pengajuan Surat' : 'Riwayat Pengajuan'}</div>` + list;
   },
@@ -450,350 +487,4 @@ const Views = {
     const form = role === 'pengurus' ? `
       <form id="f-jadwal" class="form card"><div class="card-body">
         <h3>Tambah Jadwal</h3>
-        <label>Judul kegiatan<input name="judul" required placeholder="cth: Ronda malam RT 02"></label>
-        <label>Tipe<select name="tipe"><option>Ronda</option><option>Kegiatan</option><option>Rapat</option><option>Kerja Bakti</option><option>Lainnya</option></select></label>
-        <div class="grid-2"><label>Tanggal<input name="tanggal" type="date" required></label><label>Waktu<input name="waktu" type="time"></label></div>
-        <label>Lokasi<input name="lokasi"></label>
-        <label>Petugas / peserta<input name="petugas" placeholder="cth: Budi, Andi"></label>
-        <button class="btn primary" type="submit">Simpan Jadwal</button>
-      </div></form>` : '';
-    const tipeIcon = { Ronda: ic('shield'), Kegiatan: ic('calendar'), Rapat: ic('clipboard'), 'Kerja Bakti': ic('users') };
-    const list = rows.map((r) => `
-      <div class="card"><div class="card-body">
-        <div class="row-between"><strong>${tipeIcon[r.tipe] || ic('calendar')} ${esc(r.judul)}</strong><span class="chip">${esc(r.tipe)}</span></div>
-        <div class="kv"><span>Waktu</span><b>${tglHari(r.tanggal)}${r.waktu ? ', ' + esc(r.waktu) : ''}</b></div>
-        ${r.lokasi ? `<div class="kv"><span>Lokasi</span><b>${esc(r.lokasi)}</b></div>` : ''}
-        ${r.petugas ? `<div class="kv"><span>Petugas</span><b>${esc(r.petugas)}</b></div>` : ''}
-        ${role === 'pengurus' ? delBtn('jadwal', r.id) : ''}
-      </div></div>`).join('') || emptyState('Belum ada jadwal.', 'calendar');
-    return form + `<div class="section-title">Jadwal Mendatang</div>` + list;
-  },
-
-  // ---------- KONTAK PENTING ----------
-  async kontak(user) {
-    const role = user.role; const rows = await DB.list('kontak');
-    const form = role === 'pengurus' ? `
-      <form id="f-kontak" class="form card"><div class="card-body">
-        <h3>Tambah Kontak</h3>
-        <label>Nama<input name="nama" required></label>
-        <label>Peran / keterangan<input name="peran" placeholder="cth: Ketua RT 03"></label>
-        <label>No. Telp<input name="telp" inputmode="tel" required></label>
-        <label>Kategori<select name="kategori"><option>RT/RW</option><option>Kesehatan</option><option>Keamanan</option><option>Darurat</option><option>Lainnya</option></select></label>
-        <button class="btn primary" type="submit">Simpan Kontak</button>
-      </div></form>` : '';
-    const icon = { 'RT/RW': ic('home'), Kesehatan: ic('lifebuoy'), Keamanan: ic('shield'), Darurat: ic('bell'), Lainnya: ic('phone') };
-    const cards = rows.map((r) => `
-      <div class="card" data-text="${esc((r.nama || '') + ' ' + (r.peran || '') + ' ' + (r.kategori || '') + ' ' + (r.telp || ''))}"><div class="card-body contact-row">
-        <div class="c-ic">${icon[r.kategori] || ic('phone')}</div>
-        <div class="c-info"><strong>${esc(r.nama)}</strong><div class="muted">${esc(r.peran || r.kategori)}</div></div>
-        <a class="btn ghost" href="tel:${esc(r.telp)}">📞 Telp</a>
-      </div>${role === 'pengurus' ? `<div class="card-body pt0">${delBtn('kontak', r.id)}</div>` : ''}</div>`).join('');
-    const list = rows.length ? wrapList(cards) : emptyState('Belum ada kontak.', 'phone');
-    return form + `<div class="section-title">Direktori Kontak</div>` + list;
-  },
-
-  // ---------- POLLING WARGA ----------
-  async polling(user) {
-    const role = user.role; const rows = await DB.list('polling');
-    const form = role === 'pengurus' ? `
-      <form id="f-polling" class="form card"><div class="card-body">
-        <h3>Buat Polling</h3>
-        <label>Pertanyaan<input name="judul" required placeholder="cth: Setuju kerja bakti tiap Minggu?"></label>
-        <label>Pilihan 1<input name="o1" required></label>
-        <label>Pilihan 2<input name="o2" required></label>
-        <label>Pilihan 3 (opsional)<input name="o3"></label>
-        <label>Pilihan 4 (opsional)<input name="o4"></label>
-        <button class="btn primary" type="submit">Terbitkan Polling</button>
-      </div></form>` : '';
-    const list = rows.map((r) => {
-      const total = (r.opsi || []).reduce((s, o) => s + (o.votes || 0), 0);
-      const voted = Voted.has(r.id) || r.status === 'Ditutup';
-      const bars = (r.opsi || []).map((o, i) => {
-        const pct = total ? Math.round((o.votes || 0) / total * 100) : 0;
-        return `<button class="poll-opt" ${voted ? 'disabled' : ''} data-vote="${r.id}:${i}">
-          <div class="poll-bar" style="--pct:${pct}%"></div>
-          <span class="poll-txt">${esc(o.text)}</span><span class="poll-pct">${voted ? pct + '%' : 'Pilih'}</span></button>`;
-      }).join('');
-      return `<div class="card"><div class="card-body">
-        <div class="row-between"><strong>${esc(r.judul)}</strong>${badge(r.status)}</div>
-        <div class="poll">${bars}</div>
-        <small class="muted">${total} suara • ${tgl(r.createdAt)}</small>
-        ${role === 'pengurus' ? `<div class="actions">${r.status === 'Dibuka' ? `<button class="btn ghost mini" data-set="polling:${r.id}:Ditutup">Tutup</button>` : `<button class="btn ghost mini" data-set="polling:${r.id}:Dibuka">Buka lagi</button>`}<button class="btn ghost danger mini" data-del="polling:${r.id}">Hapus</button></div>` : ''}
-      </div></div>`;
-    }).join('') || emptyState('Belum ada polling.', 'chart');
-    return form + `<div class="section-title">Polling Aktif</div>` + list;
-  },
-
-  // ---------- STATISTIK (pengurus) ----------
-  async statistik(user) {
-    if (user.role !== 'pengurus') return `<div class="callout blue"><div>ℹ️</div><div>Halaman statistik hanya untuk pengurus RT/RW.</div></div>`;
-    const [lap, ban, sur, war, iur] = await Promise.all([DB.list('laporan'), DB.list('bantuan'), DB.list('surat'), DB.list('warga'), DB.list('iuran')]);
-    const totJiwa = war.reduce((s, r) => s + (Number(r.jmlAnggota) || 0), 0);
-    const aktif = lap.filter((x) => x.status !== 'Selesai').length;
-    const suratPending = sur.filter((x) => x.status === 'Menunggu').length;
-    const sc = (val, lbl, icon, tone) => `<div class="stat" data-tone="${tone}"><div class="stat-ic">${ic(icon)}</div><div><div class="stat-val">${val}</div><div class="stat-lbl">${lbl}</div></div></div>`;
-    const bar = (label, val, max, cls) => {
-      const pct = max ? Math.round(val / max * 100) : 0;
-      return `<div class="bar-row"><span class="bar-lbl">${esc(label)}</span><div class="bar-track"><div class="bar-fill ${cls || ''}" style="width:${pct}%"></div></div><span class="bar-val">${val}</span></div>`;
-    };
-    const lstat = [['Baru', 'tone-red'], ['Diproses', 'tone-orange'], ['Selesai', 'tone-green']].map((x) => [x[0], lap.filter((l) => l.status === x[0]).length, x[1]]);
-    const maxL = Math.max(1, ...lstat.map((x) => x[1]));
-    const lapStatBars = lstat.map((x) => bar(x[0], x[1], maxL, x[2])).join('');
-    const katMap = {}; lap.forEach((l) => { const k = l.kategori || 'Lainnya'; katMap[k] = (katMap[k] || 0) + 1; });
-    const kats = Object.keys(katMap).map((k) => [k, katMap[k]]).sort((a, b) => b[1] - a[1]);
-    const maxKat = Math.max(1, ...kats.map((k) => k[1]));
-    const katBars = kats.length ? kats.map((k) => bar(k[0], k[1], maxKat)).join('') : emptyState('Belum ada data laporan.', 'chart');
-    const sstat = ['Menunggu', 'Disetujui', 'Ditolak', 'Selesai'].map((s) => [s, sur.filter((x) => x.status === s).length]);
-    const maxS = Math.max(1, ...sstat.map((x) => x[1]));
-    const suratBars = sstat.map((x) => bar(x[0], x[1], maxS)).join('');
-    const rtMap = {}; war.forEach((w) => { const k = 'RT ' + (w.rt || '-'); rtMap[k] = (rtMap[k] || 0) + 1; });
-    const rts = Object.keys(rtMap).sort().map((k) => [k, rtMap[k]]);
-    const maxRt = Math.max(1, ...rts.map((k) => k[1]));
-    const rtBars = rts.length ? rts.map((k) => bar(k[0], k[1], maxRt)).join('') : emptyState('Belum ada data warga.', 'users');
-    const lunas = iur.filter((x) => x.status === 'Lunas').length;
-    const belum = iur.filter((x) => x.status === 'Belum').length;
-    const bantuanAktif = ban.filter((x) => x.status !== 'Selesai').length;
-    return `
-      <div class="stat-grid">
-        ${sc(war.length, 'Kepala Keluarga', 'home', 'blue')}
-        ${sc(totJiwa, 'Total Jiwa', 'users', 'green')}
-        ${sc(aktif, 'Laporan Aktif', 'clipboard', 'orange')}
-        ${sc(suratPending, 'Surat Menunggu', 'mail', 'red')}
-      </div>
-      <div class="card"><div class="card-body"><h3>Laporan per Status</h3>${lapStatBars}</div></div>
-      <div class="card"><div class="card-body"><h3>Laporan per Kategori</h3>${katBars}</div></div>
-      <div class="card"><div class="card-body"><h3>Surat per Status</h3>${suratBars}</div></div>
-      <div class="card"><div class="card-body"><h3>Warga per RT</h3>${rtBars}</div></div>
-      <div class="card"><div class="card-body"><h3>Ringkasan Lain</h3>
-        <div class="kv"><span>Permintaan bantuan aktif</span><b>${bantuanAktif}</b></div>
-        <div class="kv"><span>Iuran lunas</span><b>${lunas}</b></div>
-        <div class="kv"><span>Iuran belum bayar</span><b>${belum}</b></div>
-      </div></div>`;
-  },
-
-  // ---------- NOTIFIKASI / STATUS SAYA ----------
-  async notifikasi(user) {
-    const [lap, ban, sur, peng] = await Promise.all([DB.list('laporan'), DB.list('bantuan'), DB.list('surat'), DB.list('pengumuman')]);
-    const mine = [
-      ...lap.filter((x) => x.pelapor === user.nama).map((x) => ({ t: 'Laporan', label: x.judul, status: x.status, at: x.createdAt, icon: 'clipboard' })),
-      ...ban.filter((x) => x.pemohon === user.nama).map((x) => ({ t: 'Bantuan', label: x.jenis, status: x.status, at: x.createdAt, icon: 'lifebuoy' })),
-      ...sur.filter((x) => x.pemohon === user.nama).map((x) => ({ t: 'Surat', label: x.jenis, status: x.status, at: x.createdAt, icon: 'mail' }))
-    ].sort((a, b) => (b.at || '').localeCompare(a.at || ''));
-    const mineList = mine.map((m) => `
-      <div class="card"><div class="card-body"><div class="row-between"><strong><span class="inline-ic">${ic(m.icon)}</span> ${esc(m.label)}</strong>${badge(m.status)}</div>
-      <small class="muted">${esc(m.t)} • ${tgl(m.at)}</small></div></div>`).join('') || emptyState('Belum ada pengajuan atas nama Anda.', 'bell');
-    const info = peng.slice(0, 6).map((p) => `
-      <div class="card"><div class="card-body"><div class="row-between"><strong><span class="inline-ic">${ic('megaphone')}</span> ${esc(p.judul)}</strong>${p.pinned ? '<span class="chip">📌</span>' : ''}</div>
-      <p class="muted">${esc(p.isi)}</p><small class="muted">${tgl(p.createdAt)}</small></div></div>`).join('') || emptyState('Belum ada pengumuman.', 'megaphone');
-    const notifBtn = (Notif.supported() && Notification.permission !== 'granted')
-      ? `<button class="btn primary block" data-notif-enable>🔔 Aktifkan Notifikasi</button>`
-      : `<div class="callout green"><div>✅</div><div>Notifikasi aktif di perangkat ini.</div></div>`;
-    return `<div class="card"><div class="card-body">${notifBtn}</div></div>
-      <div class="section-title">Status Pengajuan Saya</div>${mineList}
-      <div class="section-title">Info & Pengumuman</div>${info}`;
-  }
-};
-
-// ============================================================
-//  HELPERS DATA
-// ============================================================
-async function countMine(nama) {
-  const [lap, ban, sur] = await Promise.all([DB.list('laporan'), DB.list('bantuan'), DB.list('surat')]);
-  return lap.filter((x) => x.pelapor === nama).length + ban.filter((x) => x.pemohon === nama).length + sur.filter((x) => x.pemohon === nama).length;
-}
-async function getPengurusList() {
-  let list = [];
-  try { list = await DB.list('pengurus'); } catch (e) { list = []; }
-  if (!list || !list.length) list = (CFG.PENGURUS || []);
-  return list;
-}
-function formData(form) {
-  const fd = new FormData(form); const o = {};
-  fd.forEach((v, k) => { o[k] = typeof v === 'string' ? v.trim() : v; });
-  return o;
-}
-
-// ============================================================
-//  ROUTER / RENDER
-// ============================================================
-async function render(view) {
-  const user = Session.get();
-  if (!user) return renderLogin();
-  view = view || localStorage.getItem('siwarga:lastView') || 'beranda';
-  if (!VIEWS[view]) view = 'beranda';
-  localStorage.setItem('siwarga:lastView', view);
-  const tabs = user.role === 'pengurus' ? TABS_PENGURUS : TABS_WARGA;
-  const tabLabel = (t) => (t === 'beranda' && user.role === 'pengurus') ? 'Dashboard' : VIEWS[t].label;
-  const headTitle = (view === 'beranda' && user.role === 'pengurus') ? 'Dashboard Pengurus' : VIEWS[view].label;
-  $('#app').innerHTML = `
-    <header class="topbar">
-      <div><div class="tb-title">${ic(VIEWS[view].icon)} ${esc(headTitle)}</div>
-      <div class="tb-sub">${esc(CFG.WILAYAH.nama)}</div></div>
-      <div class="topbar-actions">
-        <button class="icon-btn" data-theme-toggle title="Ganti tema">${ic(Theme.get() === 'dark' ? 'sun' : 'moon')}</button>
-        <button class="avatar" id="btn-profile" title="Menu & profil">${esc((user.nama || 'U')[0].toUpperCase())}</button>
-      </div>
-    </header>
-    <main class="content" id="content">${skeleton()}</main>
-    <nav class="tabbar">${tabs.map((t) => `<button class="tab ${t === view ? 'active' : ''}" data-nav="${t}">${ic(VIEWS[t].icon)}<span>${esc(tabLabel(t))}</span></button>`).join('')}</nav>`;
-  try {
-    $('#content').innerHTML = await Views[view](user);
-    if ($('.toolbar[data-rq]')) applyListFilter();
-  } catch (err) {
-    console.error(err);
-    $('#content').innerHTML = emptyState('Gagal memuat halaman. Coba lagi.', 'bell');
-  }
-}
-
-function renderLogin(mode) {
-  mode = mode || 'login';
-  const isReg = mode === 'register';
-  $('#app').innerHTML = `
-    <div class="login">
-      <div class="login-card">
-        <div class="login-logo">🏘️</div>
-        <h1>${esc(CFG.APP_NAME || 'Aplikasi')}</h1>
-        <p class="muted">Layanan digital RT/RW — ${esc(CFG.WILAYAH.nama)}</p>
-        ${isReg ? `
-        <form id="f-register" class="form">
-          <label>Nama lengkap<input name="nama" required placeholder="Nama sesuai KTP"></label>
-          <label>NIK (16 digit)<input name="nik" inputmode="numeric" maxlength="16" required placeholder="contoh: 3201xxxxxxxxxxxx"></label>
-          <label>Email<input name="email" type="email" required placeholder="email@contoh.com"></label>
-          <label>Password<input name="pass" type="password" required minlength="6" placeholder="minimal 6 karakter"></label>
-          <button class="btn primary block" type="submit">Daftar sebagai Warga</button>
-        </form>
-        <small class="muted">Sudah punya akun? <a href="#" data-mode="login">Masuk di sini</a></small>
-        ` : `
-        <form id="f-login" class="form">
-          <label>Email<input name="email" type="email" required placeholder="email@contoh.com"></label>
-          <label>Password<input name="pass" type="password" required placeholder="password"></label>
-          <button class="btn primary block" type="submit">Masuk</button>
-        </form>
-        <small class="muted">Belum punya akun? <a href="#" data-mode="register">Daftar sebagai warga</a><br>Akun pengurus/RT/RW dibuat manual oleh admin di database.</small>
-        `}
-      </div>
-    </div>`;
-  document.querySelectorAll('[data-mode]').forEach((b) => b.addEventListener('click', (ev) => { ev.preventDefault(); renderLogin(b.dataset.mode); }));
-
-  const reg = $('#f-register');
-  if (reg) reg.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const d = formData(e.target);
-    if (!d.nama) { toast('Nama wajib diisi'); return; }
-    if (!/^\d{16}$/.test(d.nik || '')) { toast('NIK harus 16 digit angka'); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email || '')) { toast('Format email tidak valid'); return; }
-    if (!d.pass || d.pass.length < 6) { toast('Password minimal 6 karakter'); return; }
-    const email = d.email.toLowerCase();
-    const pengList = await getPengurusList();
-    if (pengList.some((p) => String(p.email || '').toLowerCase() === email)) { toast('Email ini milik akun pengurus, silakan login.'); return; }
-    const wargaList = await DB.list('warga');
-    if (wargaList.some((w) => String(w.email || '').toLowerCase() === email)) { toast('Email sudah terdaftar, silakan login.'); return; }
-    await DB.add('warga', { nama: d.nama, nik: d.nik, email: d.email, pass: d.pass, status: 'Tetap', jmlAnggota: 1 });
-    toast('Pendaftaran berhasil ✅ Silakan login.');
-    renderLogin('login');
-  });
-
-  const log = $('#f-login');
-  if (log) log.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const d = formData(e.target);
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email || '')) { toast('Format email tidak valid'); return; }
-    if (!d.pass) { toast('Password wajib diisi'); return; }
-    const email = d.email.toLowerCase();
-    const pengList = await getPengurusList();
-    const peng = pengList.find((p) => String(p.email || '').toLowerCase() === email && String(p.pass || '') === d.pass);
-    if (peng) {
-      Session.set({ nama: peng.nama || 'Pengurus', nik: peng.nik || '', email: peng.email || d.email, role: 'pengurus', jabatan: peng.jabatan || '' });
-      toast('Selamat datang, ' + (peng.nama || 'Pengurus'));
-      render('beranda');
-      return;
-    }
-    const wargaList = await DB.list('warga');
-    const warga = wargaList.find((w) => String(w.email || '').toLowerCase() === email && String(w.pass || '') === d.pass);
-    if (warga) {
-      Session.set({ nama: warga.nama, nik: warga.nik || '', email: warga.email, role: 'warga' });
-      toast('Selamat datang, ' + warga.nama);
-      render('beranda');
-      return;
-    }
-    toast('Email atau password salah.');
-  });
-}
-
-// ============================================================
-//  EVENT HANDLERS (delegasi global)
-// ============================================================
-document.addEventListener('submit', async (e) => {
-  const f = e.target; const user = Session.get(); if (!user) return;
-  const map = {
-    'f-lapor': (d) => DB.add('laporan', { judul: d.judul, kategori: d.kategori, lokasi: d.lokasi, deskripsi: d.deskripsi, status: 'Baru', pelapor: user.nama }),
-    'f-bantuan': (d) => DB.add('bantuan', { jenis: d.jenis, urgensi: d.urgensi, deskripsi: d.deskripsi, status: 'Baru', pemohon: user.nama }),
-    'f-surat': (d) => DB.add('surat', { jenis: d.jenis, keperluan: d.keperluan, status: 'Menunggu', pemohon: user.nama }),
-    'f-peng': (d) => DB.add('pengumuman', { judul: d.judul, isi: d.isi, kategori: d.kategori, pinned: !!d.pinned, author: user.nama }),
-    'f-warga': (d) => DB.add('warga', { nama: d.nama, nik: d.nik, kk: d.kk, alamat: d.alamat, rt: d.rt, rw: d.rw, telp: d.telp, status: d.status, jmlAnggota: Number(d.jmlAnggota) || 1 }),
-    'f-jadwal': (d) => DB.add('jadwal', { judul: d.judul, tipe: d.tipe, tanggal: d.tanggal, waktu: d.waktu, lokasi: d.lokasi, petugas: d.petugas }),
-    'f-kontak': (d) => DB.add('kontak', { nama: d.nama, peran: d.peran, telp: d.telp, kategori: d.kategori }),
-    'f-polling': (d) => { const opsi = [d.o1, d.o2, d.o3, d.o4].filter(Boolean).map((t) => ({ text: t, votes: 0 })); return DB.add('polling', { judul: d.judul, opsi, status: 'Dibuka', author: user.nama }); }
-  };
-  if (map[f.id]) {
-    e.preventDefault();
-    await map[f.id](formData(f));
-    toast(f.id === 'f-surat' || f.id === 'f-lapor' || f.id === 'f-bantuan' ? 'Terkirim ke pengurus ✅' : 'Berhasil disimpan ✅');
-    render(localStorage.getItem('siwarga:lastView'));
-  }
-});
-
-document.addEventListener('input', (e) => { if (e.target.closest('.search-input')) applyListFilter(); });
-
-document.addEventListener('click', async (e) => {
-  const fchip = e.target.closest('.fchip');
-  if (fchip) { $$('.fchip', fchip.parentElement).forEach((x) => x.classList.remove('active')); fchip.classList.add('active'); applyListFilter(); return; }
-  const tt = e.target.closest('[data-theme-toggle]');
-  if (tt) { Theme.toggle(); render(localStorage.getItem('siwarga:lastView')); return; }
-  const ne = e.target.closest('[data-notif-enable]');
-  if (ne) { await Notif.enable(); render(localStorage.getItem('siwarga:lastView')); return; }
-  const prof = e.target.closest('#btn-profile');
-  if (prof) { render('menu'); return; }
-  const logout = e.target.closest('#btn-logout');
-  if (logout) { if (await confirmModal('Keluar dari akun?', { okText: 'Keluar' })) { Session.clear(); render(); } return; }
-  const nav = e.target.closest('[data-nav]');
-  if (nav) { render(nav.dataset.nav); return; }
-  const setb = e.target.closest('[data-set]');
-  if (setb) {
-    const parts = setb.dataset.set.split(':'); const coll = parts[0], id = parts[1], status = parts[2];
-    await DB.update(coll, id, { status });
-    toast('Status: ' + status);
-    Notif.show(CFG.APP_NAME, 'Status diperbarui menjadi ' + status + '.');
-    render(localStorage.getItem('siwarga:lastView'));
-    return;
-  }
-  const del = e.target.closest('[data-del]');
-  if (del) {
-    const parts = del.dataset.del.split(':'); const coll = parts[0], id = parts[1];
-    if (await confirmModal('Hapus data ini? Tindakan ini tidak bisa dibatalkan.', { danger: true, okText: 'Hapus' })) {
-      await DB.remove(coll, id); toast('Data dihapus'); render(localStorage.getItem('siwarga:lastView'));
-    }
-    return;
-  }
-  const vote = e.target.closest('[data-vote]');
-  if (vote) {
-    const parts = vote.dataset.vote.split(':'); const id = parts[0], idx = Number(parts[1]);
-    if (Voted.has(id)) { toast('Anda sudah memilih'); return; }
-    const rows = await DB.list('polling'); const p = rows.find((x) => x.id === id);
-    if (p && p.status === 'Dibuka') {
-      const opsi = p.opsi.slice(); opsi[idx].votes = (opsi[idx].votes || 0) + 1;
-      await DB.update('polling', id, { opsi }); Voted.add(id); toast('Suara terkirim ✅'); render('polling');
-    }
-    return;
-  }
-});
-
-// ============================================================
-//  INIT
-// ============================================================
-(async function init() {
-  Theme.apply();
-  try { if (DB.seedIfEmpty) await DB.seedIfEmpty(); } catch (e) {}
-  render();
-  if ('serviceWorker' in navigator) { navigator.serviceWorker.register('./sw.js').catch(() => {}); }
-})();
+        <label>Judul kegiatan<input name="judul" required

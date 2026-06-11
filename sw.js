@@ -1,5 +1,5 @@
 // Service Worker - LaporPakRT/RW PWA
-const CACHE = 'siwarga-v20';
+const CACHE = 'siwarga-v21';
 const ASSETS = [
   './',
   './index.html',
@@ -10,6 +10,7 @@ const ASSETS = [
   './js/surat.js',
   './js/auth.js',
   './js/settings.js',
+  './js/chat.js',
   './js/config.js',
   './manifest.webmanifest',
   './icons/icon.svg'

@@ -3,7 +3,8 @@
 // ------------------------------------------------------------
 //  Tombol SOS melayang + view Darurat. Saat dipicu, semua
 //  anggota org yang sedang membuka aplikasi langsung dapat
-//  alarm layar penuh + bunyi + getar + notifikasi.
+//  alarm layar penuh + bunyi + getar + notifikasi yang berisi
+//  NAMA & ALAMAT pelapor (otomatis dari data warga).
 //  Modul tambahan; TIDAK mengubah app.js. Aktif hanya saat
 //  BACKEND === 'supabase'. Butuh tabel darurat (supabase-darurat.sql).
 //
@@ -33,7 +34,7 @@
   try {
     if (!document.getElementById('darurat-css')) {
       var st = document.createElement('style'); st.id = 'darurat-css';
-      st.textContent = '.sos-fab{position:fixed;right:16px;bottom:84px;z-index:900;display:none;align-items:center;gap:6px;background:#dc2626;color:#fff;border:none;border-radius:999px;padding:12px 16px;font-weight:800;box-shadow:0 6px 20px rgba(220,38,38,.45);cursor:pointer;animation:sospulse 2s infinite}.sos-fab .sos-ic{font-size:18px}@keyframes sospulse{0%{box-shadow:0 0 0 0 rgba(220,38,38,.5)}70%{box-shadow:0 0 0 14px rgba(220,38,38,0)}100%{box-shadow:0 0 0 0 rgba(220,38,38,0)}}.btn.danger:not(.ghost){background:#dc2626;color:#fff;border-color:transparent}.btn.block{width:100%;justify-content:center;text-align:center}.chip.danger{background:#fee2e2;color:#b91c1c}.callout.red{background:#fef2f2;border:1px solid #fecaca}.dar-chip{cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 12px;border-radius:12px;font-weight:700;font-size:14px}.dar-chip.active{background:#dc2626;color:#fff;border-color:transparent}.darurat-alarm{position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);padding:20px}.darurat-alarm .da-card{background:#fff;border-radius:20px;max-width:420px;width:100%;text-align:center;padding:24px;border-top:10px solid #dc2626;animation:dashake .5s}.darurat-alarm .da-emoji{font-size:54px;animation:dablink 1s infinite}@keyframes dablink{50%{opacity:.35}}@keyframes dashake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}.darurat-alarm h2{margin:8px 0 4px;color:#b91c1c}';
+      st.textContent = '.sos-fab{position:fixed;right:16px;bottom:84px;z-index:900;display:none;align-items:center;gap:6px;background:#dc2626;color:#fff;border:none;border-radius:999px;padding:12px 16px;font-weight:800;box-shadow:0 6px 20px rgba(220,38,38,.45);cursor:pointer;animation:sospulse 2s infinite}.sos-fab .sos-ic{font-size:18px}@keyframes sospulse{0%{box-shadow:0 0 0 0 rgba(220,38,38,.5)}70%{box-shadow:0 0 0 14px rgba(220,38,38,0)}100%{box-shadow:0 0 0 0 rgba(220,38,38,0)}}.btn.danger:not(.ghost){background:#dc2626;color:#fff;border-color:transparent}.btn.block{width:100%;justify-content:center;text-align:center}.chip.danger{background:#fee2e2;color:#b91c1c}.callout.red{background:#fef2f2;border:1px solid #fecaca}.dar-chip{cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 12px;border-radius:12px;font-weight:700;font-size:14px}.dar-chip.active{background:#dc2626;color:#fff;border-color:transparent}.darurat-alarm{position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);padding:20px}.darurat-alarm .da-card{background:#fff;border-radius:20px;max-width:420px;width:100%;text-align:center;padding:24px;border-top:10px solid #dc2626;animation:dashake .5s}.darurat-alarm .da-emoji{font-size:54px;animation:dablink 1s infinite}.darurat-alarm .da-addr{background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:10px;margin:10px 0;font-size:15px}.darurat-alarm a{color:#b91c1c;font-weight:700}@keyframes dablink{50%{opacity:.35}}@keyframes dashake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}.darurat-alarm h2{margin:8px 0 4px;color:#b91c1c}';
       document.head.appendChild(st);
     }
   } catch (e) {}
@@ -44,6 +45,24 @@
   function meUser() { try { return Session.get() || {}; } catch (e) { return {}; } }
   function myNama() { var u = meUser(); return u.nama || (prof() && prof().nama) || 'Warga'; }
   function ctime(v) { try { return new Date(v).toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch (e) { return ''; } }
+
+  // Ambil info pelapor (nama, alamat, telp, rt, rw) dari data warga, dicocokkan via NIK lalu nama.
+  async function myWargaInfo() {
+    var p = prof() || {};
+    var info = { nama: myNama(), alamat: '', telp: p.telp || '', rt: '', rw: '' };
+    try {
+      var list = await DB.list('warga');
+      var nik = (p.nik || '').trim();
+      var nm = (info.nama || '').trim().toLowerCase();
+      var w = null;
+      if (nik) w = list.filter(function (x) { return (x.nik || '').trim() === nik; })[0];
+      if (!w && nm) w = list.filter(function (x) { return String(x.nama || '').trim().toLowerCase() === nm; })[0];
+      if (w) { info.alamat = w.alamat || ''; info.telp = info.telp || w.telp || ''; info.rt = w.rt || ''; info.rw = w.rw || ''; if (w.nama) info.nama = w.nama; }
+    } catch (e) {}
+    return info;
+  }
+  function alamatStr(info) { return [info.alamat, info.rt ? 'RT ' + info.rt : '', info.rw ? 'RW ' + info.rw : ''].filter(Boolean).join(', '); }
+  function telLink(t) { var s = String(t || '').replace(/[^0-9+]/g, ''); return s ? '<a href="tel:' + s + '">' + esc(t) + '</a>' : ''; }
 
   function beep() {
     try {
@@ -69,29 +88,45 @@
   function raiseAlarm(d) {
     document.querySelectorAll('.darurat-alarm').forEach(function (n) { n.remove(); });
     var m = TIPE[d.tipe] || TIPE.lainnya;
+    var addr = d.alamat || d.lokasi || '';
     var wrap = document.createElement('div'); wrap.className = 'darurat-alarm';
-    wrap.innerHTML = '<div class="da-card"><div class="da-emoji">' + m.emoji + '</div><h2>PERINGATAN ' + m.label + '</h2><p><strong>' + esc(d.pengirim || 'Warga') + '</strong>' + (d.lokasi ? ' • ' + esc(d.lokasi) : '') + '</p>' + (d.pesan ? '<p class="muted">' + esc(d.pesan) + '</p>' : '') + '<p class="muted sm">' + esc(ctime(d.createdAt)) + '</p><div class="modal-actions"><button class="btn ghost" data-aclose>Tutup</button><button class="btn danger" data-aview>Lihat Detail</button></div></div>';
+    wrap.innerHTML = '<div class="da-card"><div class="da-emoji">' + m.emoji + '</div><h2>PERINGATAN ' + m.label + '</h2>' +
+      '<div class="da-addr"><div>\uD83D\uDC64 <strong>' + esc(d.pengirim || 'Warga') + '</strong></div>' +
+      (addr ? '<div>\uD83D\uDCCD ' + esc(addr) + '</div>' : '') +
+      (d.telp ? '<div>\uD83D\uDCDE ' + telLink(d.telp) + '</div>' : '') + '</div>' +
+      (d.pesan ? '<p class="muted">' + esc(d.pesan) + '</p>' : '') +
+      '<p class="muted sm">' + esc(ctime(d.createdAt)) + '</p>' +
+      '<div class="modal-actions"><button class="btn ghost" data-aclose>Tutup</button><button class="btn danger" data-aview>Lihat Detail</button></div></div>';
     document.body.appendChild(wrap);
     wrap.addEventListener('click', function (ev) { if (ev.target === wrap || ev.target.closest('[data-aclose]')) { wrap.remove(); return; } if (ev.target.closest('[data-aview]')) { wrap.remove(); try { render('darurat'); } catch (e) {} } });
     beep(); try { if (navigator.vibrate) navigator.vibrate([300, 150, 300, 150, 500]); } catch (e) {}
-    notify(m.emoji + ' PERINGATAN ' + m.label, (d.pengirim || 'Warga') + (d.lokasi ? ' • ' + d.lokasi : '') + (d.pesan ? ' — ' + d.pesan : ''));
+    var body = 'Pelapor: ' + (d.pengirim || 'Warga') + (addr ? '\nAlamat: ' + addr : '') + (d.telp ? '\nTelp: ' + d.telp : '') + (d.pesan ? '\n' + d.pesan : '');
+    notify(m.emoji + ' PERINGATAN ' + m.label, body);
   }
 
   function openSosModal() {
     document.querySelectorAll('.sos-modal').forEach(function (n) { n.remove(); });
     var wrap = document.createElement('div'); wrap.className = 'modal-overlay sos-modal';
     var chips = ['maling', 'kebakaran', 'medis', 'bencana', 'lainnya'].map(function (k, idx) { var m = TIPE[k]; return '<button type="button" class="dar-chip' + (idx === 0 ? ' active' : '') + '" data-tipe="' + k + '">' + m.emoji + ' ' + m.short + '</button>'; }).join('');
-    wrap.innerHTML = '<div class="modal"><div class="modal-head"><strong>\uD83D\uDEA8 Peringatan Darurat</strong><button class="icon-btn" data-mclose>\u2715</button></div><div class="modal-body"><p class="muted sm" style="margin-top:0">Pilih jenis keadaan darurat lalu kirim. Peringatan langsung dikirim ke seluruh warga & pengurus yang sedang membuka aplikasi.</p><div class="pick-wrap">' + chips + '</div><label>Lokasi (opsional)<input id="sos-lokasi" placeholder="cth: depan rumah Pak Budi, RT 02"></label><label>Keterangan (opsional)<input id="sos-pesan" placeholder="cth: 2 orang mencurigakan"></label></div><div class="modal-actions"><button class="btn ghost" data-mclose>Batal</button><button class="btn danger" id="sos-send">\uD83D\uDEA8 KIRIM PERINGATAN</button></div></div>';
+    wrap.innerHTML = '<div class="modal"><div class="modal-head"><strong>\uD83D\uDEA8 Peringatan Darurat</strong><button class="icon-btn" data-mclose>\u2715</button></div><div class="modal-body"><p class="muted sm" style="margin-top:0">Pilih jenis keadaan darurat lalu kirim. Peringatan langsung dikirim ke seluruh warga & pengurus yang sedang membuka aplikasi.</p><div class="pick-wrap">' + chips + '</div><label>Lokasi kejadian<input id="sos-lokasi" placeholder="otomatis dari alamat kamu"></label><label>Keterangan (opsional)<input id="sos-pesan" placeholder="cth: 2 orang mencurigakan"></label><p class="muted sm" id="sos-note">\uD83D\uDCCD Nama & alamat kamu otomatis disertakan ke peringatan.</p></div><div class="modal-actions"><button class="btn ghost" data-mclose>Batal</button><button class="btn danger" id="sos-send">\uD83D\uDEA8 KIRIM PERINGATAN</button></div></div>';
     document.body.appendChild(wrap); requestAnimationFrame(function () { wrap.classList.add('show'); });
     var tipe = 'maling';
+    myWargaInfo().then(function (info) {
+      var af = alamatStr(info);
+      var inp = wrap.querySelector('#sos-lokasi'); if (inp && !inp.value && af) inp.value = af;
+      var note = wrap.querySelector('#sos-note'); if (note) note.innerHTML = '\uD83D\uDCCD Otomatis disertakan: <strong>' + esc(info.nama) + '</strong>' + (af ? ' \u2014 ' + esc(af) : '') + (info.telp ? ' \u2022 ' + esc(info.telp) : '');
+    });
     function close() { wrap.classList.remove('show'); setTimeout(function () { wrap.remove(); }, 200); }
     async function doSend() {
       var btn = wrap.querySelector('#sos-send'); btn.disabled = true; btn.textContent = 'Mengirim...';
       var lokasi = (wrap.querySelector('#sos-lokasi').value || '').trim();
       var pesan = (wrap.querySelector('#sos-pesan').value || '').trim();
       var id = await ensureId();
+      var info = await myWargaInfo();
+      var af = alamatStr(info);
+      var lokasiFinal = lokasi || af;
       try {
-        await DB.add('darurat', { tipe: tipe, pengirim: myNama(), pengirimId: id, lokasi: lokasi, pesan: pesan, status: 'aktif' });
+        await DB.add('darurat', { tipe: tipe, pengirim: info.nama, pengirimId: id, telp: info.telp, alamat: af, lokasi: lokasiFinal, pesan: pesan, status: 'aktif' });
         since = new Date().toISOString(); localStorage.setItem(SINCE_KEY, since);
         toast('Peringatan darurat terkirim \uD83D\uDEA8');
         close();
@@ -112,12 +147,13 @@
       var all = []; try { all = await DB.list('darurat'); } catch (e) {}
       all.sort(function (a, b) { var sa = a.status === 'aktif' ? 0 : 1, sb = b.status === 'aktif' ? 0 : 1; if (sa !== sb) return sa - sb; return (b.createdAt || '').localeCompare(a.createdAt || ''); });
       var mid = myId();
-      var top = '<div class="callout red"><div>\uD83D\uDEA8</div><div>Tekan tombol di bawah saat ada keadaan darurat (maling, kebakaran, medis). Semua warga & pengurus yang sedang membuka aplikasi akan langsung mendapat peringatan berbunyi.</div></div><button class="btn danger block" data-sos style="margin-bottom:12px">\uD83D\uDEA8 PICU PERINGATAN DARURAT</button>';
+      var top = '<div class="callout red"><div>\uD83D\uDEA8</div><div>Tekan tombol di bawah saat ada keadaan darurat (maling, kebakaran, medis). Nama & alamat kamu otomatis dikirim, dan semua warga & pengurus yang sedang membuka aplikasi langsung mendapat peringatan berbunyi.</div></div><button class="btn danger block" data-sos style="margin-bottom:12px">\uD83D\uDEA8 PICU PERINGATAN DARURAT</button>';
       if (!all.length) return top + emptyState('Belum ada laporan darurat.', 'alert');
       var list = all.map(function (d) {
         var m = TIPE[d.tipe] || TIPE.lainnya;
         var canManage = user.role === 'pengurus' || String(d.pengirimId) === String(mid);
-        return '<div class="card"><div class="card-body"><div class="row-between"><strong>' + m.emoji + ' ' + m.label + '</strong><span class="chip ' + (d.status === 'aktif' ? 'danger' : '') + '">' + (d.status === 'aktif' ? 'AKTIF' : 'Selesai') + '</span></div><div class="kv"><span>Pelapor</span><b>' + esc(d.pengirim || '-') + '</b></div>' + (d.lokasi ? '<div class="kv"><span>Lokasi</span><b>' + esc(d.lokasi) + '</b></div>' : '') + (d.pesan ? '<p class="muted">' + esc(d.pesan) + '</p>' : '') + '<small class="muted">' + esc(ctime(d.createdAt)) + '</small>' + (canManage ? '<div class="actions">' + (d.status === 'aktif' ? '<button class="btn ghost mini" data-darsel="' + esc(d.id) + '">Tandai Selesai</button>' : '') + '<button class="btn ghost danger mini" data-del="darurat:' + esc(d.id) + '">Hapus</button></div>' : '') + '</div></div>';
+        var addr = d.alamat || d.lokasi || '';
+        return '<div class="card"><div class="card-body"><div class="row-between"><strong>' + m.emoji + ' ' + m.label + '</strong><span class="chip ' + (d.status === 'aktif' ? 'danger' : '') + '">' + (d.status === 'aktif' ? 'AKTIF' : 'Selesai') + '</span></div><div class="kv"><span>Pelapor</span><b>' + esc(d.pengirim || '-') + '</b></div>' + (addr ? '<div class="kv"><span>Alamat</span><b>' + esc(addr) + '</b></div>' : '') + (d.telp ? '<div class="kv"><span>Telp</span><b>' + telLink(d.telp) + '</b></div>' : '') + (d.pesan ? '<p class="muted">' + esc(d.pesan) + '</p>' : '') + '<small class="muted">' + esc(ctime(d.createdAt)) + '</small>' + (canManage ? '<div class="actions">' + (d.status === 'aktif' ? '<button class="btn ghost mini" data-darsel="' + esc(d.id) + '">Tandai Selesai</button>' : '') + '<button class="btn ghost danger mini" data-del="darurat:' + esc(d.id) + '">Hapus</button></div>' : '') + '</div></div>';
       }).join('');
       return top + '<div class="section-title">Riwayat Darurat</div><div class="list">' + list + '</div>';
     };

@@ -4,6 +4,7 @@
 --  Tabel darurat: peringatan darurat (maling, kebakaran,
 --  medis, bencana) yang di-broadcast ke seluruh anggota org.
 --  Siapa pun anggota boleh memicu (warga & pengurus).
+--  Menyertakan otomatis nama, alamat & telp pelapor.
 --
 --  JALANKAN SETELAH supabase-schema.sql (butuh current_org_id(),
 --  is_pengurus(), set_org_id()). Aman dijalankan ulang.
@@ -17,6 +18,7 @@ create table if not exists darurat (
   pengirim text,
   "pengirimId" uuid,
   telp text,
+  alamat text,
   lokasi text,
   pesan text,
   status text default 'aktif',   -- 'aktif'|'selesai'
@@ -24,6 +26,10 @@ create table if not exists darurat (
 );
 create index if not exists darurat_org_idx on darurat(org_id);
 create index if not exists darurat_status_idx on darurat(status);
+
+-- jaga-jaga utk tabel yang sudah terlanjur dibuat tanpa kolom ini
+alter table darurat add column if not exists telp text;
+alter table darurat add column if not exists alamat text;
 
 -- auto org_id
 drop trigger if exists trg_set_org_id on darurat;

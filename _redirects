@@ -1,0 +1,3 @@
+# SPA fallback: path yang nggak ketemu file statis -> index.html
+# Cloudflare Pages selalu utamakan file asli dulu, jadi js/css/aset aman.
+/*    /index.html    200

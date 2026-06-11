@@ -1,0 +1,14 @@
+# Cloudflare Pages headers
+# Service worker & config harus selalu revalidate biar update cepat nyebar
+/sw.js
+  Cache-Control: public, max-age=0, must-revalidate
+/js/config.js
+  Cache-Control: public, max-age=0, must-revalidate
+/manifest.webmanifest
+  Cache-Control: public, max-age=0, must-revalidate
+
+# Aset statis lain boleh di-cache lama (di-bust lewat versi SW)
+/js/*
+  Cache-Control: public, max-age=86400
+/icons/*
+  Cache-Control: public, max-age=604800

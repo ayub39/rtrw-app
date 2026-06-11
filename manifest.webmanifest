@@ -6,8 +6,8 @@
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#2563eb",
-  "theme_color": "#2563eb",
+  "background_color": "#f4f6f3",
+  "theme_color": "#4d7c0f",
   "lang": "id",
   "categories": ["government", "productivity", "social"],
   "icons": [

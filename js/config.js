@@ -41,5 +41,36 @@ window.APP_CONFIG = {
     nama: 'RW 05 / Kelurahan Sukamaju',
     kontakDarurat: '112',
     iuranBulanan: 25000
+  },
+
+  // ----------------------------------------------------------
+  //  KOP SURAT, CAP/STEMPEL, & PENANDATANGAN (untuk PDF surat)
+  // ----------------------------------------------------------
+  //  Semua bagian di bawah ini dipakai saat membuat PDF surat dan
+  //  BEBAS DIGANTI kapan saja sesuai data RT/RW Anda.
+  //  - Isi alamat, kelurahan, kecamatan, kota sesuai wilayah.
+  //  - logoUrl  : URL gambar logo (mis. logo kelurahan). Kosongkan ('')
+  //               kalau belum punya -> kop tetap tampil tanpa logo.
+  //  - capUrl   : URL gambar cap/stempel (PNG transparan). Kosongkan
+  //               ('') kalau belum punya -> disediakan ruang stempel.
+  //  - KETUA_RT / KETUA_RW : nama & jabatan penandatangan. Dipakai
+  //               untuk blok tanda tangan + "Mengetahui".
+  //  - DUA_TANDA_TANGAN : true = tampilkan TTD Ketua RT + Mengetahui
+  //               Ketua RW; false = cukup satu penandatangan.
+  SURAT: {
+    KOP: {
+      badan: 'PEMERINTAH KOTA SUKAMAJU',
+      namaLembaga: 'RUKUN WARGA 05 (RW 05)',
+      kelurahan: 'Kelurahan Sukamaju',
+      kecamatan: 'Kecamatan Sukamaju',
+      kabkota: 'Kota Sukamaju',
+      alamat: 'Jl. Mawar No. 1, Sukamaju',
+      kontak: 'Kode Pos 40123 • Telp. 0000-0000-0000',
+      logoUrl: '',
+      capUrl: ''
+    },
+    KETUA_RT: { nama: 'Ketua RT 01', jabatan: 'Ketua RT 01' },
+    KETUA_RW: { nama: 'Admin RW 05', jabatan: 'Ketua RW 05' },
+    DUA_TANDA_TANGAN: true
   }
 };

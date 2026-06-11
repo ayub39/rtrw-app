@@ -285,3 +285,40 @@ begin
     execute format($f$create policy "%1$s_org" on %1$s for all using (org_id = current_org_id()) with check (org_id = current_org_id());$f$, t);
   end loop;
 end $$;
+
+-- ============================================================
+--  SUPER-ADMIN  (pemilik platform / penjual)
+-- ------------------------------------------------------------
+--  Admin diidentifikasi dari email pada JWT login.
+--  >>> GANTI daftar email di is_platform_admin() dengan email kamu. <<<
+-- ============================================================
+create or replace function is_platform_admin()
+returns boolean language sql stable security definer set search_path = public as $$
+  select coalesce(auth.jwt() ->> 'email', '') = any (array['ayubsobhe@gmail.com'])
+$$;
+
+-- daftar semua organisasi (khusus admin platform; bypass RLS)
+create or replace function list_semua_organisasi()
+returns setof organisasi language plpgsql security definer set search_path = public as $$
+begin
+  if not is_platform_admin() then raise exception 'Akses ditolak: khusus admin platform'; end if;
+  return query select * from organisasi order by "createdAt" desc;
+end $$;
+
+-- ubah status langganan organisasi (khusus admin platform)
+create or replace function aktifkan_organisasi(p_org_id uuid, p_status text, p_hari int default null)
+returns organisasi language plpgsql security definer set search_path = public as $$
+declare org organisasi;
+begin
+  if not is_platform_admin() then raise exception 'Akses ditolak: khusus admin platform'; end if;
+  update organisasi
+     set status = p_status,
+         "langgananBerakhir" = case when p_hari is not null then now() + (p_hari || ' days')::interval else "langgananBerakhir" end
+   where id = p_org_id
+   returning * into org;
+  return org;
+end $$;
+
+grant execute on function is_platform_admin() to authenticated;
+grant execute on function list_semua_organisasi() to authenticated;
+grant execute on function aktifkan_organisasi(uuid, text, int) to authenticated;

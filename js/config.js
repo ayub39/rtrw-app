@@ -16,6 +16,10 @@ window.APP_CONFIG = {
   SUPABASE_URL: 'https://wxarcipfpqocpeonxyzj.supabase.co',
   SUPABASE_ANON_KEY: 'sb_publishable_zo56i9sY8NyVuvyNZKH6ow_pDj5PrB9',
 
+  // Kode rahasia yang hanya diketahui SUPER ADMIN. Wajib dimasukkan saat
+  // mendaftarkan RT/RW baru. GANTI nilainya & jangan dibagikan ke publik.
+  ADMIN_REG_CODE: 'LPRT-ADMIN-2026',
+
   // Fallback pengurus (mode lokal saja; di SaaS pakai akun Supabase)
   PENGURUS: [
     { nama: 'Admin RW 05', nik: '3201000000000001', email: 'admin@rw05.id', pass: 'admin123', jabatan: 'Ketua RW' },

@@ -4,6 +4,11 @@
 //  Aktif HANYA saat BACKEND === 'supabase'. Meng-override layar
 //  login app.js dengan autentikasi Supabase + RLS per-organisasi.
 //  Tanpa library: pakai endpoint GoTrue (/auth/v1) + PostgREST RPC.
+//
+//  Pendaftaran RT/RW (pengurus) HANYA lewat super admin: form
+//  pendaftaran RT/RW dikunci dengan Kode Admin (config.ADMIN_REG_CODE)
+//  dan tidak dipajang sebagai opsi publik. Warga tetap bebas gabung
+//  pakai kode RT/RW.
 // ============================================================
 (function () {
   var C = window.APP_CONFIG || {};
@@ -13,6 +18,7 @@
   var KEY = C.SUPABASE_ANON_KEY;
   var SKEY = 'siwarga:sb_session';
   var ADMIN_EMAILS = ['ayubsobhe@gmail.com']; // pemilik platform / super-admin
+  var ADMIN_REG_CODE = C.ADMIN_REG_CODE || 'LPRT-ADMIN-2026';
 
   // ---------- session token ----------
   function loadSession() { try { return JSON.parse(localStorage.getItem(SKEY) || 'null'); } catch (e) { return null; } }
@@ -152,15 +158,17 @@
     var head = '<div class="login-logo">\uD83C\uDFD8\uFE0F</div><h1>' + esc(C.APP_NAME || 'Aplikasi') + '</h1><p class="muted">Layanan digital RT/RW</p>';
     var body;
     if (mode === 'rtrw') {
-      body = '<form id="f-daftar-rtrw" class="form">' +
-        '<label>Nama Anda (pengurus)<input name="nama" required placeholder="Nama lengkap"></label>' +
+      body = '<div class="callout blue" style="text-align:left"><div>\uD83D\uDD10</div><div>Halaman khusus admin. Pendaftaran RT/RW baru hanya dilakukan oleh super admin dengan Kode Admin.</div></div>' +
+        '<form id="f-daftar-rtrw" class="form">' +
+        '<label>Kode Admin<input name="adminkode" type="password" required placeholder="kode dari super admin"></label>' +
+        '<label>Nama pengurus (Ketua RT/RW)<input name="nama" required placeholder="Nama lengkap"></label>' +
         '<label>Nama RT/RW<input name="orgnama" required placeholder="cth: RW 05 Kel. Sukamaju"></label>' +
         '<label>Tingkat<select name="jenis"><option value="RW">RW</option><option value="RT">RT</option></select></label>' +
         '<label>Kode unik RT/RW (dibagikan ke warga)<input name="kode" required placeholder="cth: RW05SKM"></label>' +
-        '<label>Email<input name="email" type="email" required></label>' +
+        '<label>Email pengurus<input name="email" type="email" required></label>' +
         '<label>Password<input name="pass" type="password" required minlength="6" placeholder="minimal 6 karakter"></label>' +
-        '<button class="btn primary block" type="submit">Daftar & Buat RT/RW</button></form>' +
-        '<small class="muted">Sudah punya akun? <a href="#" data-go="login">Masuk</a> • Warga? <a href="#" data-go="warga">Gabung di sini</a></small>';
+        '<button class="btn primary block" type="submit">Daftarkan RT/RW</button></form>' +
+        '<small class="muted">Sudah punya akun? <a href="#" data-go="login">Masuk</a></small>';
     } else if (mode === 'warga') {
       body = '<form id="f-daftar-warga" class="form">' +
         '<label>Nama lengkap<input name="nama" required placeholder="Nama sesuai KTP"></label>' +
@@ -179,7 +187,7 @@
         '<label>Email<input name="email" type="email" required></label>' +
         '<label>Password<input name="pass" type="password" required></label>' +
         '<button class="btn primary block" type="submit">Masuk</button></form>' +
-        '<small class="muted">Pengurus RT/RW baru? <a href="#" data-go="rtrw">Daftar di sini</a><br>Warga? <a href="#" data-go="warga">Gabung dengan kode RT/RW</a><br><a href="#" data-go="lupa">Lupa password?</a></small>';
+        '<small class="muted">Warga? <a href="#" data-go="warga">Gabung dengan kode RT/RW</a><br><a href="#" data-go="lupa">Lupa password?</a><br><span style="opacity:.6">Pendaftaran RT/RW hanya oleh admin</span> · <a href="#" data-go="rtrw">Admin</a></small>';
     }
     document.getElementById('app').innerHTML = '<div class="login"><div class="login-card">' + head + body + '</div></div>';
     document.querySelectorAll('[data-go]').forEach(function (b) { b.addEventListener('click', function (ev) { ev.preventDefault(); showLogin(b.dataset.go); }); });
@@ -196,6 +204,22 @@
     var b = document.getElementById('gate-logout'); if (b) b.addEventListener('click', function () { Session.clear(); showLogin('login'); });
   }
 
+  // Akun login tapi belum terhubung ke RT/RW manapun.
+  // Pendaftaran pengurus/RT TIDAK self-service — hanya lewat super admin.
+  // Warga yang sudah terlanjur punya akun bisa gabung pakai kode di sini.
+  function showNoOrg() {
+    document.getElementById('app').innerHTML = '<div class="login"><div class="login-card">' +
+      '<div class="login-logo">\u26D4</div><h1>Akun Belum Terdaftar</h1>' +
+      '<p class="muted">Akun ini belum terhubung ke RT/RW manapun.</p>' +
+      '<div class="callout blue" style="text-align:left"><div>\u2139\uFE0F</div><div>Pendaftaran sebagai pengurus/RT hanya dilakukan oleh super admin LaporPakRT. Kalau kamu warga, gabung pakai kode RT/RW dari pengurus di bawah ini.</div></div>' +
+      '<form id="f-join-existing" class="form"><label>Nama lengkap<input name="nama" required placeholder="Nama sesuai KTP"></label>' +
+      '<label>Kode RT/RW<input name="kode" required placeholder="dari pengurus RT/RW"></label>' +
+      '<button class="btn primary block" type="submit">Gabung sebagai Warga</button></form>' +
+      '<button class="btn ghost block" id="noorg-logout" style="margin-top:10px">Keluar</button></div></div>';
+    var fj = document.getElementById('f-join-existing'); if (fj) fj.addEventListener('submit', onJoinExisting);
+    var lo = document.getElementById('noorg-logout'); if (lo) lo.addEventListener('click', function () { Session.clear(); showLogin('login'); });
+  }
+
   function bindForms() {
     var fl = document.getElementById('f-login'); if (fl) fl.addEventListener('submit', onLogin);
     var fr = document.getElementById('f-daftar-rtrw'); if (fr) fr.addEventListener('submit', onDaftarRtrw);
@@ -210,7 +234,7 @@
     try {
       var s = persist(await apiSignIn(d.email.toLowerCase(), d.pass));
       var prof = await fetchProfile(s.user_id);
-      if (!prof) { toast('Akun belum terhubung ke RT/RW.'); showLogin('rtrw'); return; }
+      if (!prof) { showNoOrg(); return; }
       if (!orgActive(prof.organisasi)) { showGate(prof); return; }
       toast('Selamat datang, ' + (prof.nama || ''));
       enterApp(prof);
@@ -218,17 +242,18 @@
   }
   async function onDaftarRtrw(e) {
     e.preventDefault(); var d = formData(e.target);
-    if (!d.nama || !d.orgnama || !d.kode || !d.email || !d.pass) { toast('Lengkapi semua kolom'); return; }
+    if (!d.adminkode || !d.nama || !d.orgnama || !d.kode || !d.email || !d.pass) { toast('Lengkapi semua kolom'); return; }
+    if ((d.adminkode || '').trim() !== ADMIN_REG_CODE) { toast('Kode admin salah \u2014 pendaftaran RT/RW hanya lewat super admin'); return; }
     if (d.pass.length < 6) { toast('Password minimal 6 karakter'); return; }
     busy(e.target, true);
     try {
       var s = persist(await apiSignUp(d.email.toLowerCase(), d.pass));
       await rpc('buat_organisasi', { p_nama: d.orgnama, p_jenis: d.jenis || 'RW', p_kode: d.kode.trim(), p_nama_pengguna: d.nama });
       var prof = await fetchProfile(s.user_id);
-      if (!prof) { toast('Gagal memuat profil'); busy(e.target, false, 'Daftar & Buat RT/RW'); return; }
-      toast('RT/RW dibuat! Masa coba 14 hari aktif \u2705');
+      if (!prof) { toast('Gagal memuat profil'); busy(e.target, false, 'Daftarkan RT/RW'); return; }
+      toast('RT/RW berhasil didaftarkan! Masa coba 14 hari aktif \u2705');
       enterApp(prof);
-    } catch (err) { toast(err.message || 'Gagal mendaftar'); busy(e.target, false, 'Daftar & Buat RT/RW'); }
+    } catch (err) { toast(err.message || 'Gagal mendaftar'); busy(e.target, false, 'Daftarkan RT/RW'); }
   }
   async function onDaftarWarga(e) {
     e.preventDefault(); var d = formData(e.target);
@@ -244,6 +269,20 @@
       toast('Berhasil gabung \u2705');
       enterApp(prof);
     } catch (err) { toast(err.message || 'Gagal mendaftar'); busy(e.target, false, 'Daftar sebagai Warga'); }
+  }
+  async function onJoinExisting(e) {
+    e.preventDefault(); var d = formData(e.target);
+    if (!d.nama || !d.kode) { toast('Lengkapi nama & kode RT/RW'); return; }
+    busy(e.target, true);
+    try {
+      await rpc('gabung_organisasi', { p_kode: d.kode.trim(), p_nama: d.nama });
+      var s = loadSession() || {};
+      var prof = await fetchProfile(s.user_id);
+      if (!prof) { toast('Gagal memuat profil'); busy(e.target, false, 'Gabung sebagai Warga'); return; }
+      if (!orgActive(prof.organisasi)) { showGate(prof); return; }
+      toast('Berhasil gabung \u2705');
+      enterApp(prof);
+    } catch (err) { toast(err.message || 'Gagal gabung'); busy(e.target, false, 'Gabung sebagai Warga'); }
   }
   async function onLupa(e) {
     e.preventDefault(); var d = formData(e.target);
@@ -269,7 +308,7 @@
     }
     try {
       var prof = await fetchProfile(s.user_id);
-      if (!prof) { showLogin('rtrw'); return; }
+      if (!prof) { showNoOrg(); return; }
       if (!orgActive(prof.organisasi)) { showGate(prof); return; }
       enterApp(prof);
     } catch (e) { showLogin('login'); }

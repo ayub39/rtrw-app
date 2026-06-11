@@ -1,17 +1,14 @@
 {
-  "name": "LaporPakRT — Layanan RT/RW",
+  "name": "LaporPakRT/RW",
   "short_name": "LaporPakRT",
-  "description": "Aplikasi layanan warga RT/RW: lapor masalah, minta bantuan, pengumuman, data warga, jadwal, polling, dan pengajuan surat.",
-  "start_url": "./index.html",
+  "description": "Layanan digital RT/RW: lapor, surat, ronda, darurat, dan komunikasi warga.",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#f4f6f3",
-  "theme_color": "#4d7c0f",
-  "lang": "id",
-  "categories": ["government", "productivity", "social"],
+  "background_color": "#f4ede2",
+  "theme_color": "#c2682f",
   "icons": [
-    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
-    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
   ]
 }

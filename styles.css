@@ -1,6 +1,7 @@
 :root{
-  --green:#2563eb; --green-d:#1d4ed8; --green-l:#e8effd;
-  --bg:#f4f6f8; --card:#fff; --ink:#15211d; --muted:#6b7a76; --line:#e4e9e7;
+  --green:#4d7c0f; --green-d:#365314; --green-l:#ecfccb;
+  --lime:#bef264; --lime-d:#a3e635;
+  --bg:#f4f6f3; --card:#fff; --ink:#15211d; --muted:#6b7a76; --line:#e4e9e7;
   --blue:#2563eb; --orange:#d97706; --red:#dc2626; --gray:#64748b;
   --radius:16px; --shadow:0 1px 3px rgba(0,0,0,.06),0 6px 24px rgba(0,0,0,.05);
 }
@@ -15,7 +16,7 @@ h1,h3{margin:0 0 .4em}
 
 /* LOGIN */
 .login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
-  background:linear-gradient(160deg,var(--green) 0%,var(--green-d) 100%)}
+  background:linear-gradient(160deg,var(--lime-d) 0%,var(--green) 60%,var(--green-d) 100%)}
 .login-card{background:#fff;border-radius:24px;padding:32px 24px;width:100%;max-width:380px;box-shadow:var(--shadow)}
 .brand{text-align:center;margin-bottom:22px}
 .brand .logo{font-size:48px}
@@ -49,7 +50,7 @@ textarea{resize:vertical}
 
 /* APP CHROME */
 .topbar{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;
-  padding:16px;background:var(--green);color:#fff}
+  padding:16px;background:linear-gradient(120deg,var(--green-d),var(--green));color:#fff}
 .tb-sub{font-size:12px;opacity:.85}
 .avatar{width:40px;height:40px;border-radius:50%;border:2px solid rgba(255,255,255,.5);background:rgba(255,255,255,.18);
   color:#fff;font-weight:700;font-size:16px;cursor:pointer}
@@ -90,7 +91,7 @@ textarea{resize:vertical}
 .stat[data-tone=red] .stat-ic{background:#fee2e2}.stat[data-tone=green] .stat-ic{background:#dcfce7}
 .stat-val{font-size:22px;font-weight:800;line-height:1}
 .stat-lbl{font-size:11px;color:var(--muted);margin-top:2px}
-.hero-card{background:linear-gradient(135deg,var(--green),var(--green-d));color:#fff;border-radius:var(--radius);padding:18px;margin-bottom:14px;box-shadow:var(--shadow)}
+.hero-card{background:linear-gradient(135deg,var(--lime-d),#84cc16);color:#1a2e05;border-radius:var(--radius);padding:18px;margin-bottom:14px;box-shadow:0 8px 24px rgba(132,204,22,.35)}
 .hero-saldo span{font-size:12px;opacity:.85;display:block}
 .hero-saldo strong{font-size:28px;font-weight:800}
 .hero-sub{display:flex;gap:16px;margin-top:8px;font-size:12px;opacity:.9}
@@ -105,6 +106,7 @@ textarea{resize:vertical}
 .callout>div:first-child{font-size:22px;line-height:1}
 .callout.red{background:#fef2f2;border:1px solid #fecaca;color:#7f1d1d}
 .callout.blue{background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a}
+.callout.green{background:#f3fbe6;border:1px solid #c5e89a;color:#3f6212}
 .callout a{color:inherit;font-weight:700}
 
 /* TRANSAKSI */
@@ -150,10 +152,10 @@ button.stat{border:none;text-align:left;cursor:pointer;font-family:inherit}
 
 /* ---------- DASHBOARD GREETING ---------- */
 .hero-greet{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
-.hero-hi{font-size:13px;opacity:.9;display:block}
+.hero-hi{font-size:13px;opacity:.78;display:block}
 .hero-name{font-size:22px;font-weight:800;display:block;margin:2px 0;line-height:1.15}
-.hero-loc{font-size:12px;opacity:.92;margin-top:4px}
-.hero-role{background:rgba(255,255,255,.22);padding:5px 11px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;flex:0 0 auto}
+.hero-loc{font-size:12px;opacity:.85;margin-top:4px}
+.hero-role{background:rgba(0,0,0,.12);padding:5px 11px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;flex:0 0 auto;color:#1a2e05}
 
 /* ---------- LINE ICONS (simple modern) ---------- */
 .ic{width:24px;height:24px;display:inline-block;vertical-align:middle;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}

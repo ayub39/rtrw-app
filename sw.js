@@ -1,5 +1,5 @@
 // Service Worker - LaporPakRT/RW PWA
-const CACHE = 'siwarga-v14';
+const CACHE = 'siwarga-v15';
 const ASSETS = [
   './',
   './index.html',
@@ -28,12 +28,10 @@ self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
-  // Network-first for Supabase / API calls
   if (url.origin !== self.location.origin) {
     e.respondWith(fetch(req).catch(() => caches.match(req)));
     return;
   }
-  // Network-first for app shell (HTML/CSS/JS) supaya update cepat keambil
   if (req.destination === 'document' || req.destination === 'script' || req.destination === 'style' || url.pathname.endsWith('.js') || url.pathname.endsWith('.css') || url.pathname.endsWith('.html') || url.pathname.endsWith('/')) {
     e.respondWith(
       fetch(req).then((res) => {
@@ -44,7 +42,6 @@ self.addEventListener('fetch', (e) => {
     );
     return;
   }
-  // Cache-first untuk aset lain (icon, dll)
   e.respondWith(
     caches.match(req).then((cached) => {
       if (cached) return cached;
@@ -57,7 +54,6 @@ self.addEventListener('fetch', (e) => {
   );
 });
 
-// ---------- WEB PUSH (siap dipakai jika ada server pengirim) ----------
 self.addEventListener('push', (e) => {
   let data = {};
   try { data = e.data ? e.data.json() : {}; } catch (err) { data = { body: e.data ? e.data.text() : '' }; }

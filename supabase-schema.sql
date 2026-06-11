@@ -228,6 +228,32 @@ grant execute on function current_org_id() to authenticated;
 grant execute on function is_pengurus() to authenticated;
 
 -- ============================================================
+--  AUTO org_id  (trigger before insert)
+-- ------------------------------------------------------------
+--  Frontend (app.js) cukup kirim data tanpa org_id; trigger ini
+--  mengisi org_id = current_org_id() milik user yang login.
+--  Aman dgn RLS: nilai org_id dipastikan = org user, bukan dari klien.
+-- ============================================================
+create or replace function set_org_id()
+returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.org_id is null then
+    new.org_id := current_org_id();
+  end if;
+  return new;
+end $$;
+
+do $$
+declare t text;
+begin
+  foreach t in array array['warga','laporan','bantuan','pengumuman','surat','iuran','kas','jadwal','kontak','polling']
+  loop
+    execute format('drop trigger if exists trg_set_org_id on %I;', t);
+    execute format('create trigger trg_set_org_id before insert on %I for each row execute function set_org_id();', t);
+  end loop;
+end $$;
+
+-- ============================================================
 --  RLS POLICIES
 -- ============================================================
 alter table organisasi enable row level security;

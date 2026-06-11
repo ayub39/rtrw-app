@@ -799,4 +799,48 @@ document.addEventListener('click', async (e) => {
   if (nav) { render(nav.dataset.nav); return; }
   const setb = e.target.closest('[data-set]');
   if (setb) {
-    const parts = setb.dataset.set.split(':'); const coll = parts[0], id = parts[1],
+    const parts = setb.dataset.set.split(':'); const coll = parts[0], id = parts[1], val = parts.slice(2).join(':');
+    await DB.update(coll, id, { status: val });
+    toast('Status: ' + val);
+    Notif.show(CFG.APP_NAME, 'Status diperbarui menjadi ' + val + '.');
+    render(localStorage.getItem('siwarga:lastView'));
+    return;
+  }
+  const del = e.target.closest('[data-del]');
+  if (del) {
+    const parts = del.dataset.del.split(':'); const coll = parts[0], id = parts[1];
+    if (await confirmModal('Yakin ingin menghapus item ini?', { okText: 'Hapus', danger: true })) {
+      await DB.remove(coll, id);
+      toast('Berhasil dihapus');
+      render(localStorage.getItem('siwarga:lastView'));
+    }
+    return;
+  }
+  const vote = e.target.closest('[data-vote]');
+  if (vote) {
+    const parts = vote.dataset.vote.split(':'); const id = parts[0], idx = Number(parts[1]);
+    if (Voted.has(id)) { toast('Kamu sudah memberikan suara'); return; }
+    const list = await DB.list('polling');
+    const p = list.find((x) => String(x.id) === String(id));
+    if (!p || p.status === 'Ditutup') { toast('Polling sudah ditutup'); return; }
+    const opsi = (p.opsi || []).map((o, i) => i === idx ? Object.assign({}, o, { votes: (o.votes || 0) + 1 }) : o);
+    await DB.update('polling', id, { opsi });
+    Voted.add(id);
+    toast('Suara kamu tersimpan ✅');
+    render(localStorage.getItem('siwarga:lastView'));
+    return;
+  }
+});
+
+// ============================================================
+//  INIT
+// ============================================================
+(async function init() {
+  try { Theme.apply(); } catch (e) {}
+  try { injectSuratStyles(); } catch (e) {}
+  try { if (window.DB && DB.seedIfEmpty) await DB.seedIfEmpty(); } catch (e) {}
+  try { await render(localStorage.getItem('siwarga:lastView') || 'beranda'); } catch (e) { console.error(e); }
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => { navigator.serviceWorker.register('./sw.js').catch(() => {}); });
+  }
+})();

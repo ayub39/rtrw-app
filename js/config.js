@@ -1,62 +1,35 @@
 // ============================================================
-//  KONFIGURASI APLIKASI, BACKEND, & DAFTAR PENGURUS
+//  KONFIGURASI APLIKASI, BACKEND, & DEFAULT
 // ============================================================
-//  Default: penyimpanan LOKAL (localStorage) -> langsung jalan tanpa setup.
+//  MODE SaaS (multi-tenant): BACKEND = 'supabase'.
+//  Login/daftar ditangani js/auth.js memakai Supabase Auth + RLS.
+//  Tiap RT/RW = 1 organisasi (tenant). Warga daftar GRATIS via kode.
 //
-//  Mengaktifkan backend beneran (Supabase) - data jadi online & bersama:
-//   1. Buat project gratis di https://supabase.com
-//   2. Buka SQL Editor, jalankan isi file `supabase-schema.sql`
-//   3. Settings > API: salin Project URL + anon public key ke bawah
-//   4. Ubah BACKEND menjadi 'supabase'
+//  Nilai WILAYAH / SURAT / PENGURUS di bawah hanya DEFAULT/fallback;
+//  saat login, konfigurasi asli diambil dari data organisasi di DB.
 // ============================================================
 
 window.APP_CONFIG = {
-  // Nama aplikasi. Ganti ke 'LaporPakRW' kalau dipakai untuk tingkat RW,
-  // atau biarkan 'LaporPakRT' untuk tingkat RT. Bebas disesuaikan kebutuhan.
   APP_NAME: 'LaporPakRT',
 
-  BACKEND: 'local', // 'local' | 'supabase'
-  SUPABASE_URL: 'https://YOUR-PROJECT.supabase.co',
-  SUPABASE_ANON_KEY: 'YOUR-ANON-KEY',
+  BACKEND: 'supabase', // 'local' | 'supabase'
+  SUPABASE_URL: 'https://wxarcipfpqocpeonxyzj.supabase.co',
+  SUPABASE_ANON_KEY: 'sb_publishable_zo56i9sY8NyVuvyNZKH6ow_pDj5PrB9',
 
-  // ----------------------------------------------------------
-  //  DAFTAR PENGURUS / RT / RW  (INPUT MANUAL OLEH ADMIN)
-  // ----------------------------------------------------------
-  //  Warga mendaftar sendiri lewat aplikasi (NIK + email + password),
-  //  lalu login memakai email + password.
-  //
-  //  Pengurus TIDAK bisa daftar sendiri - akun pengurus diinput manual
-  //  di sini (mode lokal) ATAU di tabel `pengurus` pada Supabase (mode
-  //  online). Pengurus login memakai email + password di bawah ini.
-  //
-  //  Tambahkan tiap pengurus sebagai satu objek:
-  //    { nama, nik (16 digit), email, pass (password login), jabatan }
+  // Fallback pengurus (mode lokal saja; di SaaS pakai akun Supabase)
   PENGURUS: [
     { nama: 'Admin RW 05', nik: '3201000000000001', email: 'admin@rw05.id', pass: 'admin123', jabatan: 'Ketua RW' },
     { nama: 'Ketua RT 01', nik: '3201000000000002', email: 'rt01@rw05.id', pass: 'rt01pass', jabatan: 'Ketua RT 01' }
   ],
 
-  // Identitas wilayah (boleh diubah pengurus)
+  // Identitas wilayah (default; ditimpa data organisasi saat login)
   WILAYAH: {
     nama: 'RW 05 / Kelurahan Sukamaju',
     kontakDarurat: '112',
     iuranBulanan: 25000
   },
 
-  // ----------------------------------------------------------
-  //  KOP SURAT, CAP/STEMPEL, & PENANDATANGAN (untuk PDF surat)
-  // ----------------------------------------------------------
-  //  Semua bagian di bawah ini dipakai saat membuat PDF surat dan
-  //  BEBAS DIGANTI kapan saja sesuai data RT/RW Anda.
-  //  - Isi alamat, kelurahan, kecamatan, kota sesuai wilayah.
-  //  - logoUrl  : URL gambar logo (mis. logo kelurahan). Kosongkan ('')
-  //               kalau belum punya -> kop tetap tampil tanpa logo.
-  //  - capUrl   : URL gambar cap/stempel (PNG transparan). Kosongkan
-  //               ('') kalau belum punya -> disediakan ruang stempel.
-  //  - KETUA_RT / KETUA_RW : nama & jabatan penandatangan. Dipakai
-  //               untuk blok tanda tangan + "Mengetahui".
-  //  - DUA_TANDA_TANGAN : true = tampilkan TTD Ketua RT + Mengetahui
-  //               Ketua RW; false = cukup satu penandatangan.
+  // Kop surat / penandatangan (default; ditimpa data organisasi saat login)
   SURAT: {
     KOP: {
       badan: 'PEMERINTAH KOTA SUKAMAJU',

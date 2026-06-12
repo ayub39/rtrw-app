@@ -1,8 +1,8 @@
 -- ============================================================
---  LaporPakRT/RW — PRIVASI: surat (pengajuan) & bantuan (medis)
+--  LaporPakRT/RW — PRIVASI: laporan, surat (pengajuan) & bantuan (medis)
 -- ------------------------------------------------------------
---  Hanya PEMBUAT baris (pemohon) + PENGURUS/OWNER yang bisa
---  melihat & mengubah. Warga lain TIDAK bisa melihat baris
+--  Hanya PEMBUAT baris (pelapor/pemohon) + PENGURUS/OWNER yang
+--  bisa melihat & mengubah. Warga lain TIDAK bisa melihat baris
 --  milik warga lain.
 --
 --  Cara pakai: Supabase > SQL Editor > New query > tempel
@@ -11,6 +11,7 @@
 -- ============================================================
 
 -- 1) Kolom pemilik baris
+alter table laporan add column if not exists created_by uuid references auth.users(id);
 alter table surat   add column if not exists created_by uuid references auth.users(id);
 alter table bantuan add column if not exists created_by uuid references auth.users(id);
 
@@ -30,7 +31,7 @@ grant execute on function set_created_by() to authenticated;
 do $$
 declare t text;
 begin
-  foreach t in array array['surat','bantuan']
+  foreach t in array array['laporan','surat','bantuan']
   loop
     execute format('drop trigger if exists trg_set_created_by on %I;', t);
     execute format('create trigger trg_set_created_by before insert on %I for each row execute function set_created_by();', t);

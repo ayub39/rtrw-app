@@ -20,6 +20,11 @@ window.APP_CONFIG = {
   // mendaftarkan RT/RW baru. GANTI nilainya & jangan dibagikan ke publik.
   ADMIN_REG_CODE: 'LPRT-ADMIN-2026',
 
+  // Web Push (VAPID). Generate keypair: `npx web-push generate-vapid-keys`
+  // Tempel PUBLIC key di sini. PRIVATE key JANGAN di sini -> simpan di
+  // env Edge Function (supabase secrets set VAPID_PRIVATE_KEY=...).
+  VAPID_PUBLIC_KEY: '',
+
   // Fallback pengurus (mode lokal saja; di SaaS pakai akun Supabase)
   PENGURUS: [
     { nama: 'Admin RW 05', nik: '3201000000000001', email: 'admin@rw05.id', pass: 'admin123', jabatan: 'Ketua RW' },

@@ -23,7 +23,7 @@ window.APP_CONFIG = {
   // Web Push (VAPID). Generate keypair: `npx web-push generate-vapid-keys`
   // Tempel PUBLIC key di sini. PRIVATE key JANGAN di sini -> simpan di
   // env Edge Function (supabase secrets set VAPID_PRIVATE_KEY=...).
-  VAPID_PUBLIC_KEY: '',
+  VAPID_PUBLIC_KEY: 'BNtsyfBqqryXiw9IeK_IPwt1F_V_JV-irokV2FcdHbFAhuqdraYePo8iEQTmIoACO3UZa669wZNAOyauulIFCCg',
 
   // Fallback pengurus (mode lokal saja; di SaaS pakai akun Supabase)
   PENGURUS: [

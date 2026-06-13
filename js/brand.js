@@ -36,9 +36,14 @@
       el.innerHTML = "<img class='brand-logo' src='./icons/icon.svg' alt='LaporPakRT'>";
     }
     var h = document.querySelector('.login-card h1');
-    if (h && !h.querySelector('.ac')) {
-      var m = (h.textContent || '').match(/^(.*?)(R[TW])\s*$/);
-      if (m) h.innerHTML = m[1] + "<span class='ac'>" + m[2] + "</span>";
+    if (h && ((h.textContent || '').trim() !== 'LaporPakRT' || !h.querySelector('.ac'))) {
+      h.innerHTML = "LaporPak<span class='ac'>RT</span>";
+    }
+    var subs = document.querySelectorAll('.login-card p.muted');
+    for (var j = 0; j < subs.length; j++) {
+      var p = subs[j];
+      var t = (p.textContent || '');
+      if (/layanan digital/i.test(t) && t.trim() !== 'Layanan digital RT') p.textContent = 'Layanan digital RT';
     }
   }
   injectCss();

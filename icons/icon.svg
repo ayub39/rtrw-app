@@ -1,17 +1,17 @@
 <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' width='512' height='512'>
 <rect width='512' height='512' rx='112' fill='#fdf7ec'/>
-<g fill='none' stroke='#241c16' stroke-width='16' stroke-linecap='round' stroke-linejoin='round'>
-<path d='M182 150 L170 126'/>
-<path d='M116 208 L182 150 L248 208'/>
-<path d='M132 208 L132 360'/>
-<path d='M152 360 L152 320 L182 320 L182 360'/>
-<path d='M116 360 L400 360'/>
-<path d='M322 232 Q342 256 322 280'/>
-<path d='M348 220 Q374 256 348 292'/>
-</g>
 <g fill='#241c16'>
-<path d='M232 240 L302 214 L302 298 L232 272 Z'/>
-<rect x='211' y='245' width='23' height='22' rx='5'/>
-<rect x='252' y='274' width='15' height='28' rx='4'/>
+<path d='M256 248 L146 338 L366 338 Z'/>
+<path d='M176 330 H336 V432 H176 Z'/>
+</g>
+<path d='M230 432 V392 a26 26 0 0 1 52 0 V432 Z' fill='#fdf7ec'/>
+<g fill='#241c16' transform='translate(212 250) rotate(-34)'>
+<path d='M0 -15 L72 -42 L72 42 L0 15 Z'/>
+<rect x='-19' y='-15' width='19' height='30' rx='5'/>
+<rect x='24' y='15' width='17' height='33' rx='5'/>
+</g>
+<g fill='none' stroke='#241c16' stroke-width='15' stroke-linecap='round'>
+<path d='M300 182 q26 6 26 34'/>
+<path d='M322 165 q34 8 34 46'/>
 </g>
 </svg>

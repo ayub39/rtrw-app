@@ -20,6 +20,21 @@ window.APP_CONFIG = {
   // mendaftarkan RT/RW baru. GANTI nilainya & jangan dibagikan ke publik.
   ADMIN_REG_CODE: 'LPRT-ADMIN-2026',
 
+  // ----------------------------------------------------------
+  //  MODE DISTRIBUSI
+  //  'saas'     : 1 backend dipakai banyak RT/RW (default, langganan).
+  //  'instance' : 1 deployment khusus 1 klien, dikunci lisensi.
+  //               Set MODE:'instance' + isi INSTANCE.LISENSI_KEY pada
+  //               salinan aplikasi yang dijual ke klien tsb.
+  // ----------------------------------------------------------
+  MODE: 'saas', // 'saas' | 'instance'
+
+  INSTANCE: {
+    LISENSI_KEY: '',                        // kunci lisensi dari penjual (wajib di mode instance)
+    ORG_KODE: '',                           // (opsional) kode org klien utk pre-fill
+    CONTACT: 'mailto:ayubsobhe@gmail.com'    // kontak utk aktivasi / perpanjang lisensi
+  },
+
   // Web Push (VAPID). Generate keypair: `npx web-push generate-vapid-keys`
   // Tempel PUBLIC key di sini. PRIVATE key JANGAN di sini -> simpan di
   // env Edge Function (supabase secrets set VAPID_PRIVATE_KEY=...).

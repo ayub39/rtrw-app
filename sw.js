@@ -1,5 +1,5 @@
 // Service Worker - LaporPakRT/RW PWA
-const CACHE = 'siwarga-v28';
+const CACHE = 'siwarga-v29';
 const ASSETS = [
   './',
   './index.html',

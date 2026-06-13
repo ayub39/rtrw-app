@@ -1,1 +1,17 @@
-<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' width='512' height='512'><defs><linearGradient id='g1' x1='0' y1='0' x2='0' y2='1'><stop offset='0' stop-color='#d2773a'/><stop offset='1' stop-color='#9c4f22'/></linearGradient></defs><rect width='512' height='512' fill='url(#g1)'/><path d='M256 132 L396 256 L116 256 Z' fill='#fdfaf4'/><rect x='148' y='246' width='216' height='150' rx='20' fill='#fdfaf4'/><rect x='186' y='284' width='140' height='86' rx='20' fill='#c2682f'/><path d='M214 366 L214 400 L248 366 Z' fill='#c2682f'/><circle cx='222' cy='327' r='12' fill='#fdfaf4'/><circle cx='256' cy='327' r='12' fill='#fdfaf4'/><circle cx='290' cy='327' r='12' fill='#fdfaf4'/></svg>
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' width='512' height='512'>
+<rect width='512' height='512' rx='112' fill='#fdf7ec'/>
+<g fill='none' stroke='#241c16' stroke-width='16' stroke-linecap='round' stroke-linejoin='round'>
+<path d='M182 150 L170 126'/>
+<path d='M116 208 L182 150 L248 208'/>
+<path d='M132 208 L132 360'/>
+<path d='M152 360 L152 320 L182 320 L182 360'/>
+<path d='M116 360 L400 360'/>
+<path d='M322 232 Q342 256 322 280'/>
+<path d='M348 220 Q374 256 348 292'/>
+</g>
+<g fill='#241c16'>
+<path d='M232 240 L302 214 L302 298 L232 272 Z'/>
+<rect x='211' y='245' width='23' height='22' rx='5'/>
+<rect x='252' y='274' width='15' height='28' rx='4'/>
+</g>
+</svg>

@@ -1,8 +1,10 @@
 // ============================================================
-//  GERBANG LISENSI - hanya aktif di MODE 'instance'.
+//  GERBANG LISENSI + PEMBERSIH UI - hanya aktif di MODE 'instance'.
 //  Di MODE 'saas' (default) file ini tidak melakukan apa-apa.
-//  Memvalidasi APP_CONFIG.INSTANCE.LISENSI_KEY ke RPC cek_lisensi.
-//  Bila tidak valid -> menutup aplikasi dengan layar lisensi.
+//  1) Memvalidasi APP_CONFIG.INSTANCE.LISENSI_KEY ke RPC cek_lisensi.
+//     Bila tidak valid -> menutup aplikasi dengan layar lisensi.
+//  2) Menyembunyikan opsi 'Daftar RT/RW (Admin)' di layar login,
+//     karena instance sudah terkunci ke 1 organisasi.
 // ============================================================
 (function () {
   var C = window.APP_CONFIG || {};
@@ -38,11 +40,33 @@
     hideApp();
   }
 
+  // Buang opsi 'Admin / Daftar RT/RW' dari footer login (instance terkunci 1 org).
+  function cleanLogin() {
+    var a = document.querySelector('a[data-go="rtrw"]');
+    if (!a) return;
+    var dead = [a];
+    var p = a.previousSibling;
+    while (p) {
+      dead.push(p);
+      if (p.nodeType === 1 && p.tagName === 'BR') break; // sampai <br> sebelum span
+      p = p.previousSibling;
+    }
+    dead.forEach(function (x) { if (x && x.parentNode) x.parentNode.removeChild(x); });
+  }
+  function watchLogin() {
+    cleanLogin();
+    var app = document.getElementById('app');
+    if (!app || !window.MutationObserver) return;
+    var mo = new MutationObserver(function () { cleanLogin(); });
+    mo.observe(app, { childList: true, subtree: true });
+  }
+
   function pass(row) {
     window.INSTANCE_ORG = row || null;
     try { localStorage.setItem('lprt:lisensi:ok', '1'); } catch (e) {}
     var g = document.getElementById('lisensi-gate'); if (g) g.remove();
     showApp();
+    watchLogin();
   }
 
   if (!KEY) { overlay('Lisensi belum disetel', 'Aplikasi berjalan dalam mode instance namun kunci lisensi belum diisi pada konfigurasi.'); return; }
@@ -58,7 +82,7 @@
     else { overlay('Lisensi tidak aktif', (row && row.pesan ? row.pesan : 'Lisensi tidak valid.') + '. Silakan hubungi penyedia aplikasi untuk mengaktifkan kembali.'); }
   }).catch(function () {
     var ok = false; try { ok = localStorage.getItem('lprt:lisensi:ok') === '1'; } catch (e) {}
-    if (ok) { showApp(); return; }
+    if (ok) { showApp(); watchLogin(); return; }
     overlay('Gagal verifikasi lisensi', 'Tidak dapat terhubung ke server lisensi. Periksa koneksi internet lalu buka ulang aplikasi.');
   });
 })();

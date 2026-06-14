@@ -1,0 +1,96 @@
+============================================================
+  CARA DEPLOY  -  MODE SAAS (langganan, multi RT/RW)
+============================================================
+
+Tujuan: 1 aplikasi + 1 backend dipakai banyak RT/RW. Ini yang
+sekarang sudah live di https://ayub39.github.io/rtrw-app/
+
+Lakukan SEKALI saja. Setelah jalan, RT/RW baru tinggal kamu
+daftarkan tanpa deploy ulang.
+
+------------------------------------------------------------
+  LANGKAH 1 - SIAPKAN BACKEND SUPABASE (sekali saja)
+------------------------------------------------------------
+  1. Buka https://supabase.com/dashboard -> New project.
+  2. Catat:
+       - Project URL  (Settings > API)
+       - anon / publishable key  (Settings > API)
+  3. Buka SQL Editor > New query, jalankan BERURUTAN:
+       (1) supabase-schema.sql
+       (2) supabase-privasi.sql
+       (3) supabase-push.sql
+       (4) supabase-darurat.sql
+       (5) supabase-auto-push.sql
+     Jalankan satu per satu, pastikan tiap query "Success".
+  4. Di supabase-schema.sql ada fungsi is_platform_admin().
+     Pastikan email kamu ada di daftar itu (default sudah:
+     ayubsobhe@gmail.com). Email ini = SUPER ADMIN platform.
+
+------------------------------------------------------------
+  LANGKAH 2 - ATUR js/config.js
+------------------------------------------------------------
+  Buka js/config.js, set:
+       MODE: 'saas'
+       BACKEND: 'supabase'
+       SUPABASE_URL:      <Project URL dari Langkah 1>
+       SUPABASE_ANON_KEY: <anon key dari Langkah 1>
+       ADMIN_REG_CODE:    'GANTI-KODE-RAHASIA-KAMU'   (penting!)
+
+  ADMIN_REG_CODE = kode rahasia buat mendaftarkan RT/RW baru.
+  JANGAN dibagikan ke publik. Ganti sebelum jualan.
+
+------------------------------------------------------------
+  LANGKAH 3 - (OPSIONAL) WEB PUSH NOTIFIKASI
+------------------------------------------------------------
+  1. Generate VAPID:  npx web-push generate-vapid-keys
+  2. Di Supabase (project SaaS) set secret:
+       supabase secrets set VAPID_PUBLIC_KEY=... \
+         VAPID_PRIVATE_KEY=... VAPID_SUBJECT=mailto:emailkamu
+  3. Deploy edge function:
+       supabase functions deploy kirim-push --project-ref <ref>
+  4. Tempel VAPID PUBLIC key ke js/config.js (VAPID_PUBLIC_KEY).
+
+------------------------------------------------------------
+  LANGKAH 4 - DEPLOY APLIKASI (statis)
+------------------------------------------------------------
+  Aplikasi ini 100% statis (HTML/CSS/JS), tidak perlu build.
+
+  Pilihan A - GitHub Pages (sudah dipakai sekarang):
+     - Repo > Settings > Pages > Source: branch main, folder / (root).
+     - URL live: https://<user>.github.io/<repo>/
+
+  Pilihan B - Cloudflare Pages:
+     - Connect repo. Framework preset: None.
+     - Build command: (kosong). Output directory: /
+
+  Pilihan C - Netlify:
+     - Drag-and-drop folder, atau connect repo.
+     - Build command: (kosong). Publish directory: /
+
+------------------------------------------------------------
+  LANGKAH 5 - DAFTARKAN RT/RW PERTAMA
+------------------------------------------------------------
+  1. Buka aplikasi > di layar login klik "Admin".
+  2. Masukkan ADMIN_REG_CODE + data RT/RW + akun pengurus.
+  3. RT/RW dibuat dengan status TRIAL 14 hari.
+  4. Bagikan "Kode RT/RW" ke warga -> mereka daftar gratis.
+
+------------------------------------------------------------
+  LANGKAH 6 - KELOLA LANGGANAN (super admin)
+------------------------------------------------------------
+  Lewat Supabase SQL Editor (atau RPC krn email kamu admin):
+
+  - Lihat semua RT/RW:
+        select * from list_semua_organisasi();
+  - Aktifkan langganan 1 tahun:
+        select * from aktifkan_organisasi('<org_id>', 'aktif', 365);
+  - Nonaktifkan (nunggak):
+        select * from aktifkan_organisasi('<org_id>', 'nonaktif', null);
+
+  Kalau status bukan 'aktif'/'trial' yang masih berlaku, saat login
+  pengurus/warga akan kena layar "Menunggu Aktivasi".
+
+============================================================
+  SELESAI. Update aplikasi? Cukup push kode + naikkan versi
+  cache (CACHE 'siwarga-vXX' di sw.js + ?v=XX di index.html).
+============================================================

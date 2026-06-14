@@ -1,0 +1,45 @@
+============================================================
+  LaporPakRT / LaporPakRW  -  CARA DEPLOY (BACA INI DULU)
+============================================================
+
+Ada 2 cara pakai aplikasi ini. KODE-nya SAMA, beda cuma di
+file js/config.js (baris "MODE").
+
+------------------------------------------------------------
+  MODE SAAS  (langganan, banyak RT/RW jadi satu)
+------------------------------------------------------------
+  - 1 aplikasi + 1 backend Supabase dipakai banyak RT/RW.
+  - Tiap RT/RW bayar langganan ke kamu.
+  - Warga daftar GRATIS pakai kode RT/RW.
+  - Panduan lengkap  ->  DEPLOY-2-SAAS.txt
+
+------------------------------------------------------------
+  MODE INSTANCE  (lisensi, 1 klien 1 backend sendiri)
+------------------------------------------------------------
+  - 1 salinan aplikasi khusus 1 klien.
+  - Klien punya project Supabase SENDIRI (data terpisah).
+  - Dikunci pakai LISENSI_KEY; bisa kamu matikan dari jauh.
+  - Panduan lengkap  ->  DEPLOY-3-INSTANCE.txt
+
+------------------------------------------------------------
+  PILIH YANG MANA?
+------------------------------------------------------------
+  - Mau jualan massal & murah, kelola dari 1 tempat -> SAAS.
+  - Klien minta data sendiri / privat / sekali bayar -> INSTANCE.
+
+  Catatan: kamu BISA jalanin dua-duanya sekaligus. Backend SaaS
+  tetap jalan, dan tiap instance pakai backend masing-masing.
+
+============================================================
+  FILE PENTING
+============================================================
+  js/config.js                  -> konfigurasi aktif (yang dipakai)
+  js/config.instance.example.js -> contoh config utk mode instance
+  supabase-schema.sql           -> tabel + RLS + RPC inti
+  supabase-privasi.sql          -> aturan privasi data
+  supabase-push.sql             -> tabel langganan push
+  supabase-darurat.sql          -> fitur darurat/SOS
+  supabase-auto-push.sql        -> auto kirim notif
+  supabase-instance.sql         -> RPC lisensi (cek/set/cabut)
+  supabase-instance-seed.sql    -> seeder org+lisensi (mode instance)
+  INSTANCE-SETUP.md             -> versi markdown panduan instance

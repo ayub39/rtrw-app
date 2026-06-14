@@ -1,24 +1,42 @@
 ============================================================
   CARA DEPLOY  -  MODE INSTANCE (lisensi, 1 klien 1 backend)
+  Lengkap dari step paling awal.
 ============================================================
 
+PRASYARAT: selesaikan dulu DEPLOY-0-PERSIAPAN.txt
+  (punya akun GitHub + Supabase, sudah ambil kode aplikasi).
+
 Tujuan: 1 salinan aplikasi khusus 1 klien, dengan project
-Supabase milik klien sendiri (data terpisah penuh). Aplikasi
+Supabase MILIK KLIEN sendiri (data terpisah penuh). Aplikasi
 dikunci pakai LISENSI_KEY dan bisa kamu matikan dari jauh.
 
-Ulangi langkah ini SETIAP kali jual ke klien baru.
+ULANGI langkah 1-8 ini SETIAP kali jual ke klien baru.
 
 ------------------------------------------------------------
-  LANGKAH 1 - BUAT PROJECT SUPABASE KLIEN
+  LANGKAH 0 - PASTIKAN SIAP
 ------------------------------------------------------------
-  1. https://supabase.com/dashboard -> New project (1 project / klien).
-  2. Catat Project URL + anon key (Settings > API).
-  3. PENTING: simpan akses owner project ini di KAMU. Selama kamu
-     pegang aksesnya, kill-switch lisensi tetap di tanganmu.
+  [ ] Sudah punya akun Supabase & akun hosting.
+  [ ] Sudah punya salinan kode aplikasi (folder rtrw-app).
+  [ ] Sudah punya text editor untuk edit js/config.js.
+  (Detail ada di DEPLOY-0-PERSIAPAN.txt)
 
 ------------------------------------------------------------
-  LANGKAH 2 - JALANKAN SQL (SQL Editor, berurutan)
+  LANGKAH 1 - BUAT PROJECT SUPABASE KHUSUS KLIEN
 ------------------------------------------------------------
+  1. Login https://supabase.com/dashboard > "New project".
+     (Buat 1 project BARU untuk SETIAP klien.)
+  2. Isi nama, password DB (catat), region Singapore. Create.
+  3. Ambil kredensial: Settings > API
+        - Project URL                -> simpan
+        - Project API keys: anon key -> simpan
+  4. PENTING: simpan akses owner project ini di KAMU. Selama
+     kamu pegang aksesnya, kill-switch lisensi tetap di tanganmu.
+
+------------------------------------------------------------
+  LANGKAH 2 - BUAT DATABASE (jalankan SQL berurutan)
+------------------------------------------------------------
+  Supabase > SQL Editor > New query. Jalankan SATU PER SATU
+  sampai "Success":
        (1) supabase-schema.sql
        (2) supabase-privasi.sql
        (3) supabase-push.sql
@@ -26,20 +44,20 @@ Ulangi langkah ini SETIAP kali jual ke klien baru.
        (5) supabase-auto-push.sql
        (6) supabase-instance.sql
        (7) supabase-instance-seed.sql
-  Pastikan semua "Success". Pastikan email kamu ada di
-  is_platform_admin() (di supabase-schema.sql).
+  Pastikan email kamu ada di is_platform_admin()
+  (di supabase-schema.sql).
 
 ------------------------------------------------------------
-  LANGKAH 3 - SEED ORGANISASI + LISENSI
+  LANGKAH 3 - SEED ORGANISASI + BUAT LISENSI
 ------------------------------------------------------------
-  Di SQL Editor:
+  Di SQL Editor jalankan (sesuaikan datanya):
 
      select * from seed_instance('RW 07 Melati', 'RW', 'RW07MLT', null, 365);
 
-  Keterangan argumen:
+  Arti argumen:
      1) nama organisasi
      2) jenis: 'RW' atau 'RT'
-     3) kode unik (dibagikan ke warga utk gabung)
+     3) kode unik (dibagikan ke warga untuk gabung)
      4) lisensi: null = dibuatkan otomatis
      5) hari berlaku: 365 (atau null = tanpa kadaluarsa)
 
@@ -50,71 +68,76 @@ Ulangi langkah ini SETIAP kali jual ke klien baru.
   LANGKAH 4 - BUAT & TAUTKAN AKUN PENGURUS (owner)
 ------------------------------------------------------------
   a. Buat akun login pengurus, pilih salah satu:
-       - Supabase Dashboard > Authentication > Add user
+       - Supabase Dashboard > Authentication > Users > Add user
          (isi email + password), ATAU
-       - Pengurus sign up sendiri di layar login app
-         (akan muncul "Akun Belum Terdaftar" - itu normal).
-  b. Tautkan akun itu sebagai owner (SQL Editor):
+       - Pengurus sign up sendiri di layar login app (akan muncul
+         "Akun Belum Terdaftar" -> itu normal, lanjut ke b).
+  b. Tautkan akun jadi owner (SQL Editor):
 
        select * from tautkan_pengurus('ketua@rw07.id', 'RW07MLT', 'Pak Ketua RW 07');
 
-  Warga lain cukup daftar via tombol "Gabung dengan kode RT/RW"
+  Warga lain cukup daftar lewat tombol "Gabung dengan kode RT/RW"
   pakai kode org (mis. RW07MLT).
 
 ------------------------------------------------------------
   LANGKAH 5 - (OPSIONAL) WEB PUSH (per project klien)
 ------------------------------------------------------------
+  Butuh Node.js + Supabase CLI (lihat DEPLOY-0 Bagian C).
   1. npx web-push generate-vapid-keys
-  2. supabase secrets set VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=... \
-       VAPID_SUBJECT=mailto:emailkamu   (di project KLIEN)
+  2. Di project KLIEN:
+       supabase secrets set VAPID_PUBLIC_KEY=... \
+         VAPID_PRIVATE_KEY=... VAPID_SUBJECT=mailto:emailkamu
   3. supabase functions deploy kirim-push --project-ref <ref-klien>
   4. Tempel VAPID PUBLIC key ke config (VAPID_PUBLIC_KEY).
 
 ------------------------------------------------------------
   LANGKAH 6 - SIAPKAN js/config.js
 ------------------------------------------------------------
-  Salin file  js/config.instance.example.js  menjadi  js/config.js
+  Salin file  js/config.instance.example.js  menjadi  js/config.js,
   lalu isi:
        MODE: 'instance'
        SUPABASE_URL:      <URL project klien>
        SUPABASE_ANON_KEY: <anon key project klien>
        INSTANCE.LISENSI_KEY: <lisensiKey dari Langkah 3>
        INSTANCE.ORG_KODE:    'RW07MLT'
-       INSTANCE.CONTACT:     'mailto:kontak-kamu'   (utk klien hubungi)
+       INSTANCE.CONTACT:     'mailto:kontak-kamu'  (utk klien hubungi)
        VAPID_PUBLIC_KEY:     <kalau pakai push>
        WILAYAH / SURAT:      identitas & kop surat klien
+  Simpan file.
 
 ------------------------------------------------------------
-  LANGKAH 7 - DEPLOY KE HOSTING KLIEN
+  LANGKAH 7 - DEPLOY KE HOSTING KLIEN (statis, tanpa build)
 ------------------------------------------------------------
-  Statis, tanpa build. Pilihan:
-     - Cloudflare Pages: preset None, build kosong, output /
+  Pilihan:
+     - Cloudflare Pages: preset None, build KOSONG, output /
      - GitHub Pages: branch main, folder / (root)
-     - Netlify: publish directory /
+     - Netlify: build KOSONG, publish /
   Pastikan js/config.js yang ter-deploy = versi instance klien.
 
 ------------------------------------------------------------
   LANGKAH 8 - TES
 ------------------------------------------------------------
   Buka aplikasi:
-     - Lisensi VALID    -> app jalan normal, opsi Admin disembunyikan.
-     - Lisensi SALAH/    -> muncul layar "Lisensi tidak aktif"
-       kadaluarsa/dicabut   + tombol Hubungi Penyedia.
+     - Lisensi VALID                 -> app jalan normal, opsi
+                                        "Admin" disembunyikan.
+     - Lisensi SALAH / kadaluarsa /  -> muncul layar
+       dicabut                          "Lisensi tidak aktif" +
+                                        tombol Hubungi Penyedia.
 
 ------------------------------------------------------------
   MENGELOLA LISENSI SETELAH LIVE (dari backend klien)
 ------------------------------------------------------------
-  - Matikan app (klien nunggak / berhenti):
-        select * from cabut_lisensi('<org_id>');
-  - Hidupkan lagi / perpanjang:
-        select * from set_instance_lisensi('<org_id>', '<lisensiKey>', 365);
-  - Cari org_id:
+  Cari org_id:
         select id, nama, kode, status, "lisensiKey" from organisasi;
+  Matikan app (klien nunggak / berhenti):
+        select * from cabut_lisensi('<org_id>');
+  Hidupkan lagi / perpanjang:
+        select * from set_instance_lisensi('<org_id>', '<lisensiKey>', 365);
 
   CATATAN: kalau akses project Supabase diserahkan penuh ke klien,
   mereka bisa ubah lisensinya sendiri. Untuk jaga kontrol, simpan
   akses owner project di kamu.
 
 ============================================================
-  SELESAI. Ulangi Langkah 1-8 untuk tiap klien baru.
+  SELESAI - ulangi Langkah 1-8 untuk tiap klien baru.
 ============================================================

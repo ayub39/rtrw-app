@@ -1,96 +1,135 @@
 ============================================================
   CARA DEPLOY  -  MODE SAAS (langganan, multi RT/RW)
+  Lengkap dari step paling awal.
 ============================================================
 
-Tujuan: 1 aplikasi + 1 backend dipakai banyak RT/RW. Ini yang
-sekarang sudah live di https://ayub39.github.io/rtrw-app/
+PRASYARAT: selesaikan dulu DEPLOY-0-PERSIAPAN.txt
+  (punya akun GitHub + Supabase, sudah ambil kode aplikasi).
 
-Lakukan SEKALI saja. Setelah jalan, RT/RW baru tinggal kamu
-daftarkan tanpa deploy ulang.
+Tujuan: 1 aplikasi + 1 backend dipakai banyak RT/RW.
+Lakukan SEKALI. Setelah jalan, RT/RW baru tinggal didaftarkan
+tanpa deploy ulang.
 
 ------------------------------------------------------------
-  LANGKAH 1 - SIAPKAN BACKEND SUPABASE (sekali saja)
+  LANGKAH 0 - PASTIKAN SIAP
 ------------------------------------------------------------
-  1. Buka https://supabase.com/dashboard -> New project.
-  2. Catat:
-       - Project URL  (Settings > API)
-       - anon / publishable key  (Settings > API)
-  3. Buka SQL Editor > New query, jalankan BERURUTAN:
+  [ ] Sudah punya akun Supabase & GitHub.
+  [ ] Sudah download/clone kode (folder rtrw-app).
+  [ ] Sudah punya text editor untuk edit js/config.js.
+  (Detail ada di DEPLOY-0-PERSIAPAN.txt)
+
+------------------------------------------------------------
+  LANGKAH 1 - BUAT PROJECT SUPABASE (sekali saja)
+------------------------------------------------------------
+  1. Login https://supabase.com/dashboard > "New project".
+  2. Isi: nama project, password database (catat), region
+     (pilih Singapore biar dekat Indonesia). Klik Create.
+  3. Tunggu project selesai dibuat (1-2 menit).
+  4. Ambil kredensial: Settings > API
+        - Project URL                -> simpan
+        - Project API keys: anon key -> simpan
+     (Cara detail: DEPLOY-0-PERSIAPAN.txt Bagian E.)
+
+------------------------------------------------------------
+  LANGKAH 2 - BUAT DATABASE (jalankan SQL berurutan)
+------------------------------------------------------------
+  Di Supabase: SQL Editor > New query. Jalankan SATU PER SATU
+  (copy isi file -> paste -> Run -> tunggu "Success"):
        (1) supabase-schema.sql
        (2) supabase-privasi.sql
        (3) supabase-push.sql
        (4) supabase-darurat.sql
        (5) supabase-auto-push.sql
-     Jalankan satu per satu, pastikan tiap query "Success".
-  4. Di supabase-schema.sql ada fungsi is_platform_admin().
-     Pastikan email kamu ada di daftar itu (default sudah:
-     ayubsobhe@gmail.com). Email ini = SUPER ADMIN platform.
+  (Cara detail menjalankan SQL: DEPLOY-0 Bagian F.)
+
+  PENTING - tentukan SUPER ADMIN:
+     Buka supabase-schema.sql, cari fungsi is_platform_admin().
+     Pastikan EMAIL kamu ada di daftarnya (default sudah
+     ayubsobhe@gmail.com -> ganti ke email kamu). Email ini yang
+     bisa kelola langganan semua RT/RW.
 
 ------------------------------------------------------------
-  LANGKAH 2 - ATUR js/config.js
+  LANGKAH 3 - ISI js/config.js
 ------------------------------------------------------------
-  Buka js/config.js, set:
-       MODE: 'saas'
+  Buka js/config.js di text editor, set:
+       APP_NAME: 'LaporPakRT'
        BACKEND: 'supabase'
+       MODE: 'saas'
        SUPABASE_URL:      <Project URL dari Langkah 1>
        SUPABASE_ANON_KEY: <anon key dari Langkah 1>
-       ADMIN_REG_CODE:    'GANTI-KODE-RAHASIA-KAMU'   (penting!)
+       ADMIN_REG_CODE:    'GANTI-KODE-RAHASIA-KAMU'
+  Simpan file.
 
-  ADMIN_REG_CODE = kode rahasia buat mendaftarkan RT/RW baru.
-  JANGAN dibagikan ke publik. Ganti sebelum jualan.
+  ADMIN_REG_CODE = kode rahasia untuk mendaftarkan RT/RW baru.
+  WAJIB diganti & jangan disebar ke publik.
 
 ------------------------------------------------------------
-  LANGKAH 3 - (OPSIONAL) WEB PUSH NOTIFIKASI
+  LANGKAH 4 - (OPSIONAL) WEB PUSH NOTIFIKASI
 ------------------------------------------------------------
-  1. Generate VAPID:  npx web-push generate-vapid-keys
-  2. Di Supabase (project SaaS) set secret:
+  Lewati langkah ini kalau belum butuh notifikasi.
+  Butuh Node.js + Supabase CLI (lihat DEPLOY-0 Bagian C).
+  1. Generate kunci:   npx web-push generate-vapid-keys
+  2. Set rahasia di Supabase:
        supabase secrets set VAPID_PUBLIC_KEY=... \
          VAPID_PRIVATE_KEY=... VAPID_SUBJECT=mailto:emailkamu
-  3. Deploy edge function:
+  3. Deploy fungsi:
        supabase functions deploy kirim-push --project-ref <ref>
+     (<ref> = ID project, ada di Settings > General / URL dashboard)
   4. Tempel VAPID PUBLIC key ke js/config.js (VAPID_PUBLIC_KEY).
 
 ------------------------------------------------------------
-  LANGKAH 4 - DEPLOY APLIKASI (statis)
+  LANGKAH 5 - DEPLOY APLIKASI (statis, tanpa build)
 ------------------------------------------------------------
-  Aplikasi ini 100% statis (HTML/CSS/JS), tidak perlu build.
+  PILIHAN A - GitHub Pages (paling gampang):
+     1. Punya repo sendiri (fork / buat repo baru lalu upload
+        semua file aplikasi).
+     2. Repo > Settings > Pages.
+     3. Source: "Deploy from a branch".
+     4. Branch: main, Folder: / (root). Save.
+     5. Tunggu 1-2 menit. URL muncul:
+        https://<username>.github.io/<nama-repo>/
 
-  Pilihan A - GitHub Pages (sudah dipakai sekarang):
-     - Repo > Settings > Pages > Source: branch main, folder / (root).
-     - URL live: https://<user>.github.io/<repo>/
+  PILIHAN B - Cloudflare Pages:
+     1. pages.cloudflare.com > Create > Connect to Git.
+     2. Pilih repo. Framework preset: None.
+     3. Build command: (KOSONG). Output directory: /
+     4. Deploy.
 
-  Pilihan B - Cloudflare Pages:
-     - Connect repo. Framework preset: None.
-     - Build command: (kosong). Output directory: /
-
-  Pilihan C - Netlify:
-     - Drag-and-drop folder, atau connect repo.
-     - Build command: (kosong). Publish directory: /
+  PILIHAN C - Netlify:
+     1. netlify.com > Add new site.
+     2. Connect repo (atau drag-and-drop folder).
+     3. Build command: (KOSONG). Publish directory: /
 
 ------------------------------------------------------------
-  LANGKAH 5 - DAFTARKAN RT/RW PERTAMA
+  LANGKAH 6 - DAFTARKAN RT/RW PERTAMA
 ------------------------------------------------------------
-  1. Buka aplikasi > di layar login klik "Admin".
-  2. Masukkan ADMIN_REG_CODE + data RT/RW + akun pengurus.
+  1. Buka URL aplikasi. Di layar login klik "Admin".
+  2. Masukkan ADMIN_REG_CODE + data RT/RW + akun pengurus
+     (email & password ketua).
   3. RT/RW dibuat dengan status TRIAL 14 hari.
-  4. Bagikan "Kode RT/RW" ke warga -> mereka daftar gratis.
+  4. Bagikan "Kode RT/RW" ke warga -> warga daftar GRATIS
+     pakai tombol "Gabung dengan kode RT/RW".
 
 ------------------------------------------------------------
-  LANGKAH 6 - KELOLA LANGGANAN (super admin)
+  LANGKAH 7 - KELOLA LANGGANAN (super admin)
 ------------------------------------------------------------
-  Lewat Supabase SQL Editor (atau RPC krn email kamu admin):
-
+  Lewat Supabase SQL Editor:
   - Lihat semua RT/RW:
         select * from list_semua_organisasi();
   - Aktifkan langganan 1 tahun:
         select * from aktifkan_organisasi('<org_id>', 'aktif', 365);
   - Nonaktifkan (nunggak):
         select * from aktifkan_organisasi('<org_id>', 'nonaktif', null);
+  Kalau status bukan 'aktif' / 'trial' yang masih berlaku, saat
+  login akan muncul layar "Menunggu Aktivasi".
 
-  Kalau status bukan 'aktif'/'trial' yang masih berlaku, saat login
-  pengurus/warga akan kena layar "Menunggu Aktivasi".
+------------------------------------------------------------
+  UPDATE APLIKASI NANTI
+------------------------------------------------------------
+  Setelah ubah kode, naikkan versi cache supaya user dapat versi
+  baru: di sw.js ubah CACHE 'siwarga-vXX' (naikkan angka), dan di
+  index.html ubah semua ?v=XX. Lalu deploy ulang.
 
 ============================================================
-  SELESAI. Update aplikasi? Cukup push kode + naikkan versi
-  cache (CACHE 'siwarga-vXX' di sw.js + ?v=XX di index.html).
+  SELESAI - SAAS sudah jalan.
 ============================================================

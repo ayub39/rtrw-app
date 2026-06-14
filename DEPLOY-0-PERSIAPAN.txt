@@ -1,0 +1,123 @@
+============================================================
+  PERSIAPAN AWAL  -  WAJIB DIBACA SEBELUM DEPLOY
+  (untuk yang BELUM punya akun / belum install apa-apa)
+============================================================
+
+Urutan baca:
+   DEPLOY-0-PERSIAPAN.txt   <- KAMU DI SINI (siapin alat & akun)
+   DEPLOY-1-BACA-DULU.txt   <- pilih mode SAAS atau INSTANCE
+   DEPLOY-2-SAAS.txt        <- kalau pilih SAAS
+   DEPLOY-3-INSTANCE.txt    <- kalau pilih INSTANCE
+
+============================================================
+  BAGIAN A - APA ITU APLIKASI INI
+============================================================
+Aplikasi web (PWA) untuk layanan RT/RW: lapor masalah, minta
+bantuan, pengumuman, data warga, surat, iuran, jadwal ronda,
+polling, dan tombol darurat.
+
+Teknologi: HTML + CSS + JavaScript (statis, TANPA build) untuk
+tampilan, dan Supabase (database + login) untuk backend.
+Karena statis, hosting-nya gratis/murah (GitHub Pages dll).
+
+============================================================
+  BAGIAN B - AKUN YANG HARUS DIBUAT (gratis)
+============================================================
+1. AKUN GITHUB  (tempat kode + hosting GitHub Pages)
+   - Daftar di https://github.com (gratis).
+
+2. AKUN SUPABASE  (database + login/autentikasi)
+   - Daftar di https://supabase.com (gratis, bisa login pakai GitHub).
+
+3. (OPSIONAL) AKUN HOSTING LAIN
+   - Cloudflare Pages: https://pages.cloudflare.com
+   - Netlify: https://netlify.com
+   - Hanya perlu kalau TIDAK mau pakai GitHub Pages.
+
+============================================================
+  BAGIAN C - ALAT YANG DI-INSTALL DI KOMPUTER
+============================================================
+Untuk deploy dasar (SAAS/INSTANCE tanpa push) sebenarnya cukup
+browser + akun di atas. Tapi disarankan punya:
+
+1. GIT  (untuk ambil & update kode)
+   - Download: https://git-scm.com/downloads
+   - Cek berhasil:  buka Terminal/CMD, ketik:  git --version
+
+2. TEXT EDITOR  (untuk edit js/config.js)
+   - Disarankan VS Code: https://code.visualstudio.com
+   - Notepad / editor apa pun juga bisa.
+
+3. (HANYA KALAU PAKAI WEB PUSH NOTIFIKASI)
+   - Node.js (LTS): https://nodejs.org
+        Cek:  node --version   dan   npm --version
+   - Supabase CLI: https://supabase.com/docs/guides/cli
+        Cek:  supabase --version
+
+============================================================
+  BAGIAN D - AMBIL KODE APLIKASI
+============================================================
+Pilih SALAH SATU cara:
+
+CARA 1 - Download ZIP (paling gampang, tanpa Git)
+   1. Buka https://github.com/ayub39/rtrw-app
+   2. Tombol hijau "Code" > "Download ZIP".
+   3. Ekstrak. Isinya = folder aplikasi.
+
+CARA 2 - Git clone (disarankan, gampang update)
+   git clone https://github.com/ayub39/rtrw-app.git
+   cd rtrw-app
+
+CARA 3 - Fork (kalau mau punya salinan repo sendiri di GitHub)
+   1. Buka repo di atas > tombol "Fork".
+   2. Lalu clone hasil fork punyamu.
+
+ISI FOLDER PENTING:
+   index.html              -> halaman utama
+   js/config.js            -> SATU-SATUNYA file yang wajib kamu edit
+   js/                      -> kode aplikasi (jangan diutak-atik)
+   styles.css, sw.js        -> tampilan & service worker
+   supabase-*.sql           -> file database (dijalankan di Supabase)
+   js/config.instance.example.js -> contoh config utk mode instance
+
+============================================================
+  BAGIAN E - CARA AMBIL SUPABASE_URL & ANON KEY
+  (dipakai di config.js, sering ditanyakan)
+============================================================
+1. Login https://supabase.com/dashboard
+2. Buat / buka project.
+3. Menu kiri: Settings (ikon gerigi) > API.
+4. Yang dipakai:
+      - "Project URL"          -> isi ke SUPABASE_URL
+      - "Project API keys" >    -> isi ke SUPABASE_ANON_KEY
+        anon / publishable key
+   JANGAN pakai "service_role" key di config.js (itu rahasia,
+   hanya untuk server/edge function).
+
+============================================================
+  BAGIAN F - CARA MENJALANKAN FILE SQL DI SUPABASE
+============================================================
+1. Di dashboard project: menu kiri "SQL Editor".
+2. Klik "New query".
+3. Buka file .sql (mis. supabase-schema.sql) di text editor,
+   COPY semua isinya, PASTE ke editor SQL.
+4. Klik "Run" (atau Ctrl+Enter). Tunggu sampai "Success".
+5. Ulangi untuk file SQL berikutnya, SATU PER SATU, sesuai urutan
+   di panduan SAAS / INSTANCE.
+   (Semua file SQL aman dijalankan ulang / idempotent.)
+
+============================================================
+  BAGIAN G - CARA EDIT js/config.js
+============================================================
+1. Buka file js/config.js dengan text editor.
+2. Ubah nilai sesuai panduan (SUPABASE_URL, ANON_KEY, MODE, dll).
+3. Simpan.
+4. Kalau deploy via GitHub: commit & push perubahan, atau
+   upload file lewat web GitHub (tombol pensil = edit).
+
+============================================================
+  SETELAH SEMUA SIAP
+============================================================
+Lanjut ke DEPLOY-1-BACA-DULU.txt untuk pilih mode, lalu ikuti
+DEPLOY-2-SAAS.txt ATAU DEPLOY-3-INSTANCE.txt sampai selesai.
+============================================================

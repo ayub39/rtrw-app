@@ -13,8 +13,7 @@
   "dir": "ltr",
   "categories": ["productivity", "social"],
   "icons": [
-    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
-    { "src": "icons/app-icon.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any" },
-    { "src": "icons/app-icon.png", "sizes": "1024x1024", "type": "image/png", "purpose": "maskable" }
+    { "src": "icons/app-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/app-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }

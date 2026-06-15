@@ -1,5 +1,5 @@
 // Service Worker - LaporPakRT/RW PWA
-const CACHE = 'siwarga-v33';
+const CACHE = 'siwarga-v34';
 const ASSETS = [
   './',
   './index.html',
@@ -62,14 +62,25 @@ self.addEventListener('fetch', (e) => {
   );
 });
 
+// Pola getar (milidetik): [getar, jeda, getar, ...]
+const VIBRATE_NORMAL = [200, 100, 200];
+const VIBRATE_DARURAT = [300, 120, 300, 120, 300, 120, 500];
+
 self.addEventListener('push', (e) => {
   let data = {};
   try { data = e.data ? e.data.json() : {}; } catch (err) { data = { body: e.data ? e.data.text() : '' }; }
   const title = data.title || 'LaporPakRT';
+  const isDarurat = data.darurat === true || data.tipe === 'darurat' || /darurat|sos/i.test(title);
+  // Prioritas: pola dari server (data.vibrate) > pola darurat > pola normal.
+  const pattern = Array.isArray(data.vibrate) ? data.vibrate : (isDarurat ? VIBRATE_DARURAT : VIBRATE_NORMAL);
   const opts = {
     body: data.body || 'Ada pembaruan baru di lingkungan Anda.',
     icon: './icons/icon.svg',
     badge: './icons/icon.svg',
+    vibrate: pattern,
+    tag: data.tag || undefined,
+    renotify: data.tag ? true : undefined,
+    requireInteraction: isDarurat,
     data: { url: data.url || './' }
   };
   e.waitUntil(self.registration.showNotification(title, opts));

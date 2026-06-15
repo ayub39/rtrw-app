@@ -2,12 +2,16 @@
   "name": "LaporPakRT/RW",
   "short_name": "LaporPakRT",
   "description": "Layanan digital RT/RW: lapor, surat, ronda, darurat, dan komunikasi warga.",
+  "id": "/rtrw-app/",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#f4ede2",
-  "theme_color": "#c2682f",
+  "background_color": "#edefe9",
+  "theme_color": "#15532e",
+  "lang": "id",
+  "dir": "ltr",
+  "categories": ["productivity", "social"],
   "icons": [
     { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
   ]

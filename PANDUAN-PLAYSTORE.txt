@@ -1,0 +1,150 @@
+==================================================
+  PANDUAN JADIIN APK & UPLOAD KE PLAY STORE
+  Aplikasi LaporPakRT / LaporPakRW  (metode TWA)
+==================================================
+
+Apa itu TWA: bungkus PWA jadi APK pakai mesin Chrome. Kode web TIDAK
+ditulis ulang. Tiap kamu update kode di GitHub, isi app otomatis
+ikut ter-update (gak perlu upload APK lagi), KECUALI saat ganti
+nama/ikon/izin Android.
+
+Biaya: Akun Google Play Developer = USD 25 (BAYAR SEKALI seumur
+hidup, bukan langganan). Tools lain gratis.
+Waktu: ~1-2 jam kerja + review Google ~1-7 hari.
+
+--------------------------------------------------
+  PRASYARAT
+--------------------------------------------------
+[ ] PWA sudah online (sudah: https://ayub39.github.io/rtrw-app/)
+[ ] Akun Google (buat daftar Play Developer)
+[ ] Komputer + browser
+[ ] Halaman Kebijakan Privasi online -> WAJIB Play Store
+    (bilang ke aku kalau mau dibuatkan halaman privacy-nya)
+
+==================================================
+  BAGIAN A - DAFTAR AKUN PLAY DEVELOPER (USD 25)
+==================================================
+1. Buka: https://play.google.com/console/signup
+2. Login pakai akun Google.
+3. Tipe akun: "Pribadi" sudah cukup untuk awal.
+   (Akun pribadi baru kadang diminta uji dgn beberapa penguji
+    sebelum rilis publik - ikuti instruksi di console.)
+4. Bayar USD 25 (kartu / Google Pay).
+5. Lengkapi data identitas (nama, alamat) - wajib diverifikasi.
+6. Tunggu verifikasi akun (bisa beberapa hari).
+
+==================================================
+  BAGIAN B - GENERATE APK/AAB PAKAI PWABUILDER
+==================================================
+1. Buka: https://www.pwabuilder.com
+2. Masukkan URL: https://ayub39.github.io/rtrw-app/  lalu Start.
+3. Pastikan Manifest & Service Worker dapat centang hijau.
+4. Klik "Package For Stores" > pilih "Android".
+5. Pilih paket "Google Play" (format .aab).
+6. Isi opsi:
+     - Package ID: id.laporpak.rt
+       (huruf kecil, unik, TIDAK bisa diubah selamanya - pilih hati2)
+     - App name: LaporPakRT
+     - Launcher name: LaporPakRT
+     - Host: ayub39.github.io
+     - Start URL: /rtrw-app/
+     - Theme color: #15532e
+     - Signing key: biarkan PWABuilder buat baru (atau pakai punyamu)
+7. Klik Generate, lalu download ZIP. Isi ZIP penting:
+     - app-release-bundle.aab   <- ini yang di-upload ke Play
+     - signing.keystore + info password  <- SIMPAN BAIK-BAIK
+     - assetlinks.json          <- berisi fingerprint SHA256 kamu
+     - readme next-steps
+
+!!! file signing key (.keystore) + password WAJIB disimpan + backup.
+    Kalau hilang, kamu TIDAK bisa update app selamanya.
+
+==================================================
+  BAGIAN C - DIGITAL ASSET LINKS (paling sering gagal)
+==================================================
+Tujuan: buktikan ke Android bahwa APK ini milik domain webmu, biar
+app TIDAK nampilin bar alamat browser di atas.
+
+>>> MASALAH GITHUB PAGES <<<
+File assetlinks.json HARUS bisa diakses di ROOT domain:
+   https://ayub39.github.io/.well-known/assetlinks.json   (BENAR)
+BUKAN di subfolder app:
+   https://ayub39.github.io/rtrw-app/.well-known/...       (SALAH)
+
+Karena app kamu ada di /rtrw-app/, root domain itu milik repo KHUSUS
+bernama "ayub39.github.io". Solusi:
+
+CARA 1 (disarankan) - bikin repo user-page:
+1. Buat repo BARU di GitHub, nama PERSIS: ayub39.github.io
+2. Buat file di repo itu: .well-known/assetlinks.json
+3. Isinya = assetlinks.json hasil PWABuilder.
+   (Template ada di repo ini: playstore/assetlinks.json -> ganti
+    package_name & sha256 fingerprint sesuai punyamu.)
+4. Settings repo itu > Pages > aktifkan (branch main).
+5. Cek di browser: https://ayub39.github.io/.well-known/assetlinks.json
+   harus tampil JSON (bukan 404).
+
+CARA 2 - pakai domain sendiri (mis. laporpakrt.com):
+1. Beli domain, arahkan ke GitHub Pages (custom domain + CNAME).
+2. Taruh .well-known/assetlinks.json di repo.
+3. Ganti Host di PWABuilder jadi domain itu.
+
+Verifikasi: setelah assetlinks online + app terpasang, kalau app
+TIDAK nampilin bar alamat = berhasil.
+
+==================================================
+  BAGIAN D - SIAPKAN MATERI LISTING
+==================================================
+[ ] Ikon 512x512 PNG (PWABuilder sudah hasilkan dari icon.svg)
+[ ] Feature graphic 1024x500 PNG
+[ ] Minimal 2 screenshot HP (mis. 1080x1920) - tangkapan layar app
+[ ] Judul (maks 30 huruf): LaporPakRT
+[ ] Deskripsi singkat (maks 80 huruf)
+[ ] Deskripsi lengkap (sebut fitur: lapor, surat, ronda, darurat...)
+[ ] URL Kebijakan Privasi (WAJIB)
+[ ] Kategori: Sosial / Produktivitas
+[ ] Email kontak developer
+
+==================================================
+  BAGIAN E - UPLOAD KE PLAY CONSOLE
+==================================================
+1. Play Console > "Create app". Nama, bahasa Indonesia, gratis.
+2. Menu kiri "App content": isi privacy policy, Data Safety
+   (JUJUR: app mengumpulkan data warga -> isi formnya benar),
+   target audience, ads, dll.
+3. "Store listing": isi materi Bagian D.
+4. Buat rilis: mulai dari "Internal testing" (uji dulu) sebelum
+   "Production".
+5. Upload file .aab dari PWABuilder.
+6. Isi release notes > Review > Rollout.
+
+==================================================
+  BAGIAN F - REVIEW & RILIS
+==================================================
+- Google review ~1-7 hari (akun baru bisa lebih lama).
+- Kalau ditolak: baca alasan, perbaiki, submit lagi.
+- Setelah disetujui, app muncul di Play Store.
+
+==================================================
+  BAGIAN G - UPDATE KE DEPAN (enaknya TWA)
+==================================================
+- Update fitur/konten (HTML/JS/CSS): cukup push ke GitHub seperti
+  biasa. APK otomatis nampilin versi terbaru. TIDAK perlu upload
+  ulang ke Play.
+- Upload .aab baru HANYA kalau ganti: nama paket, ikon launcher,
+  izin Android, atau target SDK.
+
+==================================================
+  CATATAN PENTING
+==================================================
+1. Notifikasi: TWA tetap pakai web push yang sama. Di HP hemat
+   baterai (Oppo/Xiaomi) reliabilitas TIDAK otomatis sempurna -
+   user tetap perlu izinkan notif + lepas batasan baterai.
+2. iPhone TIDAK lewat Play Store (butuh App Store + Mac + akun
+   Apple USD 99/th). Android dulu.
+3. Simpan signing key (.keystore + password) + backup. HILANG =
+   tidak bisa update app selamanya.
+4. Package ID tidak bisa diubah setelah rilis - pilih sekali, benar.
+5. Sebelum jualan: ganti ADMIN_REG_CODE, pertimbangkan repo private,
+   cabut token/VAPID yang pernah bocor.
+==================================================

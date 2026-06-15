@@ -1,5 +1,5 @@
 // Service Worker - LaporPakRT/RW PWA
-const CACHE = 'siwarga-v34';
+const CACHE = 'siwarga-v35';
 const ASSETS = [
   './',
   './index.html',
@@ -16,6 +16,7 @@ const ASSETS = [
   './js/darurat.js',
   './js/brand.js',
   './js/push.js',
+  './js/vibrate.js',
   './manifest.webmanifest',
   './icons/icon.svg'
 ];
@@ -71,7 +72,6 @@ self.addEventListener('push', (e) => {
   try { data = e.data ? e.data.json() : {}; } catch (err) { data = { body: e.data ? e.data.text() : '' }; }
   const title = data.title || 'LaporPakRT';
   const isDarurat = data.darurat === true || data.tipe === 'darurat' || /darurat|sos/i.test(title);
-  // Prioritas: pola dari server (data.vibrate) > pola darurat > pola normal.
   const pattern = Array.isArray(data.vibrate) ? data.vibrate : (isDarurat ? VIBRATE_DARURAT : VIBRATE_NORMAL);
   const opts = {
     body: data.body || 'Ada pembaruan baru di lingkungan Anda.',
@@ -83,7 +83,11 @@ self.addEventListener('push', (e) => {
     requireInteraction: isDarurat,
     data: { url: data.url || './' }
   };
-  e.waitUntil(self.registration.showNotification(title, opts));
+  e.waitUntil(
+    self.registration.showNotification(title, opts)
+      .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+      .then((list) => { list.forEach((c) => { try { c.postMessage({ type: 'vibrate', pattern: pattern }); } catch (e2) {} }); })
+  );
 });
 
 self.addEventListener('notificationclick', (e) => {
